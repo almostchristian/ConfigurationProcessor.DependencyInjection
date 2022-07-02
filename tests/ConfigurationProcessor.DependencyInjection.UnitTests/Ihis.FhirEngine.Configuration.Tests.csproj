@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup Condition="'$(TargetFramework)'!='netcoreapp2.1'">
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="[6.0.*,)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp2.1'">
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ihis.FhirEngine.Configuration\Ihis.FhirEngine.Configuration.csproj" />
+    <ProjectReference Include="..\TestDummies\TestDummies.csproj" />
+  </ItemGroup>
+
+</Project>
