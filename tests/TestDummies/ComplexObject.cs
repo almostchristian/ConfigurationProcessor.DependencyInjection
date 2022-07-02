@@ -8,9 +8,9 @@ namespace TestDummies
 {
     public class ComplexObject : IComplexObject
     {
-        public string? Name { get; set; }
+        public string Name { get; set; }
 
-        public ChildValue? Value { get; set; }
+        public ChildValue Value { get; set; }
 
         public void SetName(string name)
         {
@@ -30,7 +30,7 @@ namespace TestDummies
         {
             public TimeSpan Time { get; set; }
 
-            public string? Child { get; set; }
+            public string Child { get; set; }
         }
     }
 }

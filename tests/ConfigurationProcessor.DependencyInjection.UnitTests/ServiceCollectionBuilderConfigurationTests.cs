@@ -13,7 +13,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
 {
     public class ServiceCollectionBuilderConfigurationTests : ConfigurationBuilderTestsBase
     {
-        protected override void TestBuilder(string json, TestServiceCollection serviceCollection, string? fullJsonFormat = null)
+        protected override void TestBuilder(string json, TestServiceCollection serviceCollection, string fullJsonFormat = null)
         {
             var fullJson = string.Format(fullJsonFormat ?? "{{ 'TestApp': {0}}}", json);
             serviceCollection.AddFromConfiguration(
