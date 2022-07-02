@@ -50,11 +50,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <Compile Include="$(MSBuildThisFileDirectory)\Shims\*.cs" LinkBase="Shims" Condition="! $(MSBuildProjectName.EndsWith('Ihis.FhirEngine.SqlServer')) AND ! $(MSBuildProjectName.EndsWith('Analyzers'))" />
-  </ItemGroup>
-  
-  <ItemGroup Condition="'$(TargetFramework)'!='netstandard2.0'">
-    <None Include="$(MSBuildThisFileDirectory)\Shims\*.cs" LinkBase="Shims" Condition="! $(MSBuildProjectName.EndsWith('Ihis.FhirEngine.SqlServer')) AND ! $(MSBuildProjectName.EndsWith('Analyzers'))" />
   </ItemGroup>
 
   <ItemGroup>
