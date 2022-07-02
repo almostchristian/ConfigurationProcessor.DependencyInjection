@@ -261,24 +261,50 @@ namespace ConfigurationProcessor.Core.Implementation
             // Per issue #111, it is safe to use case-insensitive matching on argument names. The CLR doesn't permit this type
             // of overloading, and the Microsoft.Extensions.Configuration keys are case-insensitive (case is preserved with some
             // config sources, but key-matching is case-insensitive and case-preservation does not appear to be guaranteed).
-            var selectedMethod = candidateMethods
+            var selectedMethods = candidateMethods
                 .Where(m => m.GetParameters()
                             .Skip(1)
                             .All(p => p.HasImplicitValueWhenNotSpecified() ||
                                       p.IsConfigurationOptionsBuilder(out _) ||
                                       p.ParameterType!.ParameterTypeHasPropertyMatches(suppliedArgumentNames) ||
                                       ParameterNameMatches(p.Name!, suppliedArgumentNames)))
-                .OrderByDescending(m =>
+                .GroupBy(m =>
                 {
                     var matchingArgs = m.GetParameters().Where(p => p.IsConfigurationOptionsBuilder(out _) || ParameterNameMatches(p.Name!, suppliedArgumentNames)).ToList();
 
                     // Prefer the configuration method with most number of matching arguments and of those the ones with
                     // the most string type parameters to predict best match with least type casting
-                    return new Tuple<int, int>(
+                    return (
                         matchingArgs.Count,
                         matchingArgs.Count(p => p.ParameterType == typeof(string)));
                 })
-                .FirstOrDefault();
+                .OrderByDescending(x => x.Key)
+                .FirstOrDefault()?
+                .AsEnumerable();
+
+            MethodInfo? selectedMethod;
+            if (selectedMethods?.Count() > 1)
+            {
+                // if no best match was found, use the one with a similar number of arguments based on the argument list
+                selectedMethods = selectedMethods.Where(m =>
+                {
+                    var requiredParamCount = m.GetParameters().Count(x => !x.IsOptional);
+                    return requiredParamCount == suppliedArgumentNames.Count() + (m.IsStatic ? 1 : 0);
+                });
+
+                if (selectedMethods.Count() > 1)
+                {
+                    selectedMethod = selectedMethods.OrderBy(m => m.IsStatic ? 1 : 0).FirstOrDefault();
+                }
+                else
+                {
+                    selectedMethod = selectedMethods.SingleOrDefault();
+                }
+            }
+            else
+            {
+                selectedMethod = selectedMethods?.SingleOrDefault();
+            }
 
             if (selectedMethod == null && suppliedArgumentNames.Count() == 1 && suppliedArgumentNames.All(string.IsNullOrEmpty))
             {

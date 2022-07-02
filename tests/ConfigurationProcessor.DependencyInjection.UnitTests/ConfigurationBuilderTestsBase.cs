@@ -364,9 +364,63 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
             Assert.Collection(
                 serviceCollection,
                 sd => Assert.Equal(typeof(SimpleValue<int>), sd.ServiceType));
-        }
+      }
 
-        [Fact]
+      [Fact]
+      public void AddingSimpleStringOverloadResolutionTest()
+      {
+         var json = @$"
+{{
+    'Services': {{
+        'SimpleValue': {{ 'StringValue': 'hello' }}
+    }}
+}}";
+
+         var serviceCollection = new TestServiceCollection();
+         TestBuilder(json, serviceCollection);
+
+         Assert.Collection(
+             serviceCollection,
+             sd => Assert.Equal(typeof(SimpleValue<string>), sd.ServiceType));
+      }
+
+      [Fact]
+      public void AddingSimpleIntOverloadResolutionTest()
+      {
+         var json = @$"
+{{
+    'Services': {{
+        'SimpleValue': {{ 'IntValue': 42 }}
+    }}
+}}";
+
+         var serviceCollection = new TestServiceCollection();
+         TestBuilder(json, serviceCollection);
+
+         Assert.Collection(
+             serviceCollection,
+             sd => Assert.Equal(typeof(SimpleValue<int>), sd.ServiceType));
+      }
+
+      [Fact]
+      public void AddingParameterlessOverloadResolutionTest()
+      {
+         var json = @$"
+{{
+    'Services': {{
+        'SimpleValue': true
+    }}
+}}";
+
+         var serviceCollection = new TestServiceCollection();
+         TestBuilder(json, serviceCollection);
+
+         Assert.Collection(
+             serviceCollection,
+             sd => Assert.Equal(typeof(SimpleValue<object>), sd.ServiceType));
+      }
+
+      [Fact]
         public void AddingSimpleDelegateWithoutParameterNameSyntax()
         {
             var json = @$"

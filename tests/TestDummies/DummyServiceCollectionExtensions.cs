@@ -16,7 +16,6 @@ namespace TestDummies
     [ExcludeFromCodeCoverage]
     public static class DummyServiceCollectionExtensions
     {
-
         public static IServiceCollection AddDummyDelegate(this IServiceCollection services, DummyDelegate dummyDelegate)
         {
             services.AddSingleton(dummyDelegate);
@@ -66,6 +65,24 @@ namespace TestDummies
         public static IServiceCollection AddSimpleInt32(this IServiceCollection services, int value)
         {
             services.AddSingleton(new SimpleValue<int>(value));
+            return services;
+        }
+
+        public static IServiceCollection AddSimpleValue(this IServiceCollection services, string stringValue)
+        {
+            services.AddSingleton(new SimpleValue<string>(stringValue));
+            return services;
+        }
+
+        public static IServiceCollection AddSimpleValue(this IServiceCollection services, int intValue)
+        {
+            services.AddSingleton(new SimpleValue<int>(intValue));
+            return services;
+        }
+
+        public static IServiceCollection AddSimpleValue(this IServiceCollection services)
+        {
+            services.AddSingleton(new SimpleValue<object>(new object()));
             return services;
         }
 
