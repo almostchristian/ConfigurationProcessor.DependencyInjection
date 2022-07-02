@@ -10,14 +10,14 @@ Given an application with a configure services section like below:
 services.AddLogging();
 services.AddHsts(options =>
 {
-    options.Preload = true;
-    options.IncludeSubDomains = true;
-    options.MaxAge = TimeSpan.FromDays(365);
+   options.Preload = true;
+   options.IncludeSubDomains = true;
+   options.MaxAge = TimeSpan.FromDays(365);
 });
 services.Configure<CookiePolicyOptions>(options =>
 {
-    options.HttpOnly = HttpOnlyPolicy.Always;
-    options.Secure = CookieSecurePolicy.Always;
+   options.HttpOnly = HttpOnlyPolicy.Always;
+   options.Secure = CookieSecurePolicy.Always;
 });
 ```
 
@@ -29,18 +29,18 @@ services.AddFromConfiguration(Configuration, "Services");
 
 ```json
 {
-	"Services": {
-		"Logging": true,
-		"Hsts": {
-			"Preload": true,
-			"IncludeSubDomains": true,
-			"MaxAge": "356.00:00:00"
-		},
-		"Configure<Microsoft.AspNetCore.Builder.CookiePolicyOptions>": {
-			"HttpOnly": "Always",
-			"Secure": "Always"
-		}
-	}
+   "Services": {
+      "Logging": true,
+      "Hsts": {
+      "Preload": true,
+         "IncludeSubDomains": true,
+         "MaxAge": "356.00:00:00"
+      },
+      "Configure<Microsoft.AspNetCore.Builder.CookiePolicyOptions>": {
+         "HttpOnly": "Always",
+         "Secure": "Always"
+      }
+   }
 }
 ```
 
