@@ -4,12 +4,12 @@
 
 namespace TestDummies
 {
-    public class SimpleObject
-    {
-        public int PropertyA { get; set; }
+   public class SimpleObject
+   {
+      public int PropertyA { get; set; }
 
-        public string PropertyB { get; set; }
+      public string PropertyB { get; set; }
 
-        public bool PropertyC { get; set; } = true;
-    }
+      public bool PropertyC { get; set; } = true;
+   }
 }

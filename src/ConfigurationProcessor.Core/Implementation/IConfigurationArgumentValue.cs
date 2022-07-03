@@ -7,8 +7,8 @@ using System.Reflection;
 
 namespace ConfigurationProcessor.Core.Implementation
 {
-    internal interface IConfigurationArgumentValue
-    {
-        object? ConvertTo(MethodInfo method, Type toType, ResolutionContext resolutionContext);
-    }
+   internal interface IConfigurationArgumentValue
+   {
+      object? ConvertTo(MethodInfo method, Type toType, ResolutionContext resolutionContext);
+   }
 }

@@ -4,12 +4,12 @@
 
 namespace TestDummies
 {
-    public class DummyParameter<T>
-    {
-        public T DummyParam { get; set; }
-    }
+   public class DummyParameter<T>
+   {
+      public T DummyParam { get; set; }
+   }
 
-    public class DummyParameter : DummyParameter<string>
-    {
-    }
+   public class DummyParameter : DummyParameter<string>
+   {
+   }
 }

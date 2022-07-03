@@ -4,10 +4,10 @@
 
 namespace TestDummies
 {
-    public interface IComplexObject
-    {
-        string Name { get; set; }
+   public interface IComplexObject
+   {
+      string Name { get; set; }
 
-        ComplexObject.ChildValue Value { get; set; }
-    }
+      ComplexObject.ChildValue Value { get; set; }
+   }
 }

@@ -2,69 +2,83 @@
 // Copyright (c) Integrated Health Information Systems Pte Ltd. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
-using System.Linq;
-using System.Reflection;
 using ConfigurationProcessor.Core.Assemblies;
 using ConfigurationProcessor.Core.Implementation;
 using ConfigurationProcessor.DependencyInjection.UnitTests.Support;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
+/* Unmerged change from project 'ConfigurationProcessor.DependencyInjection.UnitTests (net462)'
+Before:
 using TestDummies;
-using Xunit;
-using static ConfigurationProcessor.DependencyInjection.UnitTests.Support.Extensions;
+After:
+using System.Linq;
+using System.Reflection;
+using TestDummies;
+*/
+
+/* Unmerged change from project 'ConfigurationProcessor.DependencyInjection.UnitTests (netcoreapp3.1)'
+Before:
+using TestDummies;
+After:
+using System.Linq;
+using System.Reflection;
+using TestDummies;
+*/
+using System.Reflection;
 
 namespace ConfigurationProcessor.DependencyInjection.UnitTests
 {
-    public class ConfigurationReaderTests
-    {
-        private readonly ConfigurationReader<IServiceCollection> configurationReader;
+   public class ConfigurationReaderTests
+   {
+      private readonly ConfigurationReader<IServiceCollection> configurationReader;
 
-        public ConfigurationReaderTests()
-        {
-            configurationReader = new ConfigurationReader<IServiceCollection>(
-                JsonStringConfigSource.LoadSection(@"{ 'FhirEngine': {  } }", "FhirEngine"),
-                AssemblyFinder.ForSource(ConfigurationAssemblySource.UseLoadedAssemblies),
-                Array.Empty<MethodInfo>());
-        }
+      public ConfigurationReaderTests()
+      {
+         configurationReader = new ConfigurationReader<IServiceCollection>(
+             JsonStringConfigSource.LoadSection(@"{ 'FhirEngine': {  } }", "FhirEngine"),
+             AssemblyFinder.ForSource(ConfigurationAssemblySource.UseLoadedAssemblies),
+             Array.Empty<MethodInfo>());
+      }
 
-        [Fact]
-        public void AddServicesSupportExpandedSyntaxWithoutArgs()
-        {
-            var json = @"
+      [Fact]
+      public void AddServicesSupportExpandedSyntaxWithoutArgs()
+      {
+         var json = @"
 {
     'Services': [{
         'Name': 'HandlerMapping'
     }]
 }";
 
-            var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
 
-            Assert.Collection(
-                result,
-                r => Assert.Equal("HandlerMapping", r.Key));
-        }
+         Assert.Collection(
+             result,
+             r => Assert.Equal("HandlerMapping", r.Key));
+      }
 
-        [Fact]
-        public void AddServicesSupportAlternateSyntaxWithoutArgs()
-        {
-            var json = @"
+      [Fact]
+      public void AddServicesSupportAlternateSyntaxWithoutArgs()
+      {
+         var json = @"
 {
     'Services': {
         'HandlerMapping': null
     }
 }";
 
-            var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
 
-            Assert.Collection(
-                result,
-                r => Assert.Equal("HandlerMapping", r.Key));
-        }
+         Assert.Collection(
+             result,
+             r => Assert.Equal("HandlerMapping", r.Key));
+      }
 
-        [Fact]
-        public void AddServicesSupportExpandedSyntaxWithArgs()
-        {
-            var json = @"
+      [Fact]
+      public void AddServicesSupportExpandedSyntaxWithArgs()
+      {
+         var json = @"
 {
     'Services': [ {
         'Name': 'HandlerMapping',
@@ -74,31 +88,31 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
     }]
 }";
 
-            var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
 
-            Assert.Collection(
-                result,
-                r => Assert.Equal("HandlerMapping", r.Key));
+         Assert.Collection(
+             result,
+             r => Assert.Equal("HandlerMapping", r.Key));
 
-            Assert.Collection(
-                result["HandlerMapping"],
-                kvp => Assert.Empty(kvp.Item1));
+         Assert.Collection(
+             result["HandlerMapping"],
+             kvp => Assert.Empty(kvp.Item1));
 
-            var args = result["HandlerMapping"].Single().Item3.ToArray();
+         var args = result["HandlerMapping"].Single().Item3.ToArray();
 
-            Assert.Collection(
-                args,
-                kvp =>
-                {
-                    Assert.Equal("mappings", kvp.Key);
-                    Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null)));
-                });
-        }
+         Assert.Collection(
+             args,
+             kvp =>
+             {
+                Assert.Equal("mappings", kvp.Key);
+                Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null)));
+             });
+      }
 
-        [Fact]
-        public void AddServicesSupportAlternateSyntaxWithArgs()
-        {
-            var json = @"
+      [Fact]
+      public void AddServicesSupportAlternateSyntaxWithArgs()
+      {
+         var json = @"
 {
     'Services': {
         'HandlerMapping': {
@@ -107,25 +121,25 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
     }
 }";
 
-            var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
 
-            Assert.Collection(
-                result,
-                r => Assert.Equal("HandlerMapping", r.Key));
+         Assert.Collection(
+             result,
+             r => Assert.Equal("HandlerMapping", r.Key));
 
-            Assert.Collection(
-                result["HandlerMapping"],
-                kvp => Assert.Empty(kvp.Item1));
+         Assert.Collection(
+             result["HandlerMapping"],
+             kvp => Assert.Empty(kvp.Item1));
 
-            var args = result["HandlerMapping"].Single().Item3.ToArray();
+         var args = result["HandlerMapping"].Single().Item3.ToArray();
 
-            Assert.Collection(
-                args,
-                kvp =>
-                {
-                    Assert.Equal("mappings", kvp.Key);
-                    Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null)));
-                });
-        }
-    }
+         Assert.Collection(
+             args,
+             kvp =>
+             {
+                Assert.Equal("mappings", kvp.Key);
+                Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null)));
+             });
+      }
+   }
 }

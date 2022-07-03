@@ -4,11 +4,11 @@
 
 namespace ConfigurationProcessor.DependencyInjection.UnitTests.Support
 {
-    public abstract class AbstractClass
-    {
-    }
+   public abstract class AbstractClass
+   {
+   }
 
-    public class ConcreteClass : AbstractClass
-    {
-    }
+   public class ConcreteClass : AbstractClass
+   {
+   }
 }
