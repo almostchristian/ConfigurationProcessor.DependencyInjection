@@ -1,12 +1,12 @@
 <Project>
     <PropertyGroup>
-        <Description>$(Description) Built from $(GIT_VERSION)</Description>
+        <Description>This library registers and configures services in a service collection using .NET's' configuration library. Built from $(GIT_VERSION)</Description>
         <NoWarn>$(NoWarn);NU5128;NU5105;</NoWarn>
         <PackageOutputPath>$(MSBuildThisFileDirectory)..\packages</PackageOutputPath>
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>0.9.2</Version>
+        <Version>0.9.3</Version>
         <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
         <PackageVersion>$(Version)</PackageVersion>
         <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
