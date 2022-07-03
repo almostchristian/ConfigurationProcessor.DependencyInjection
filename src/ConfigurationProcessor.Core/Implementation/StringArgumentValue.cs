@@ -8,25 +8,26 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor.Core.Implementation
 {
    internal class StringArgumentValue : IConfigurationArgumentValue
    {
+      private readonly IConfigurationSection section;
       private readonly string providedValue;
 
       private static readonly Regex StaticMemberAccessorRegex = new Regex("^(?<shortTypeName>[^:]+)::(?<memberName>[A-Za-z][A-Za-z0-9]*)(?<typeNameExtraQualifiers>[^:]*)$");
 
       private static readonly Dictionary<Type, Func<string, ResolutionContext, object>> ExtendedTypeConversions = new Dictionary<Type, Func<string, ResolutionContext, object>>
         {
-            { typeof(Uri), (s, c) => new Uri(s) },
-            { typeof(TimeSpan), (s, c) => TimeSpan.Parse(s, System.Globalization.CultureInfo.InvariantCulture) },
             { typeof(Type), (s, c) => c.GetType(s, c.RootConfiguration, c.AppConfiguration)(default, 0) },
             { typeof(Assembly), (s, c) => c.FindAssembly(s)! },
         };
 
-      public StringArgumentValue(string providedValue)
+      public StringArgumentValue(IConfigurationSection section, string providedValue)
       {
+         this.section = section;
          this.providedValue = providedValue ?? throw new ArgumentNullException(nameof(providedValue));
       }
 
@@ -150,7 +151,7 @@ namespace ConfigurationProcessor.Core.Implementation
             return ctor.Invoke(call);
          }
 
-         return Convert.ChangeType(argumentValue, toType, System.Globalization.CultureInfo.InvariantCulture);
+         return section.Get(toType);
       }
 
       internal static bool TryParseStaticMemberAccessor(string input, [NotNullWhen(true)] out string? accessorTypeName, [NotNullWhen(true)] out string? memberName)

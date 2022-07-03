@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>10</LangVersion>
+    <Description>This library registers and configures services in a service collection using an IConfiguration object. Built from $(GIT_VERSION)</Description>
   </PropertyGroup>
 
   <ItemGroup>

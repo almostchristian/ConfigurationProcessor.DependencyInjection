@@ -274,7 +274,7 @@ namespace ConfigurationProcessor.Core.Implementation
                   var bindMethodExpression = (MethodCallExpression)bindExpression.Body;
                   methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], typeParameter));
 
-                  var argumentValues = sourceConfigurationSection.GetChildren().ToDictionary<IConfigurationSection, string, IConfigurationArgumentValue>(x => x.Key.ToUpperInvariant(), x => x.GetArgumentValue(this.resolutionContext.ConfigurationAssemblies));
+                  var argumentValues = sourceConfigurationSection.GetChildren().ToDictionary(x => x.Key.ToUpperInvariant(), x => x.GetArgumentValue(this.resolutionContext.ConfigurationAssemblies));
                   methodExpressions.Add(Expression.Call(Extensions.BindMappableValuesMethod, typeParameter, Expression.Constant(argumentType), Expression.Constant(methodToInvoke), Expression.Constant(currentResolutionContext), Expression.Constant(argumentValues)));
                }
 

@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>10</LangVersion>
+    <Description>This library processes an IConfiguration object into a Domain Specific Language to dynamically execute functions on a given object. Built from $(GIT_VERSION)</Description>
   </PropertyGroup>
 
   <ItemGroup>

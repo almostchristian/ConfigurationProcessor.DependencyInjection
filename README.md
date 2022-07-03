@@ -157,8 +157,6 @@ Some .NET types can be mapped from a string in configuration. These additional m
 
 |.NET Type                   |Example Configuration|C# Equivalent                   |
 |----------------------------|---------------------|--------------------------------|
-|`System.Uri`                |`"http://github.com"`|`new Uri("http://github.com")`
-|`System.TimeSpan`           |`"00:00:30"`         |`TimeSpan.Parse("00:00:30", CultureInfo.InvariantCulture)`
 |`System.Type`               |`"System.String"`    |`Type.GetType("System.String")`*|
 |`System.Reflection.Assembly`|`"MyCorp.MyLib"`     |`Assembly.Load("MyCorp.MyLib")`*|
 

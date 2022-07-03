@@ -43,7 +43,7 @@ namespace ConfigurationProcessor.Core.Implementation
          }
 
          // MS Config binding can work with a limited set of primitive types and collections
-         return section.Get(toType);
+         return section.Get(toType, o => o.ErrorOnUnknownConfiguration = true);
 
          object CreateArray()
          {
@@ -86,7 +86,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
                for (int i = 0; i < configurationElements.Length; ++i)
                {
-                  var keyValue = new StringArgumentValue(configurationElements[i].Key);
+                  var keyValue = new StringArgumentValue(configurationElements[i], configurationElements[i].Key);
                   var argumentValue = configurationElements[i].GetArgumentValue(configurationAssemblies);
                   var key = keyValue.ConvertTo(method, keyType, resolutionContext);
                   var value = argumentValue.ConvertTo(method, valueType, resolutionContext);

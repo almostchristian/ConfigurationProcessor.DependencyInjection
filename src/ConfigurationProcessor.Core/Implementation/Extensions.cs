@@ -49,7 +49,7 @@ namespace ConfigurationProcessor.Core.Implementation
       {
          return new Dictionary<string, (IConfigurationArgumentValue, IConfigurationSection)>
                 {
-                    { string.Empty, (new StringArgumentValue(section.Value), section) },
+                    { string.Empty, (new StringArgumentValue(section, section.Value), section) },
                 };
       }
 
@@ -85,7 +85,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
          if (argumentSection.Value != null)
          {
-            argumentValue = new StringArgumentValue(argumentSection.Value);
+            argumentValue = new StringArgumentValue(argumentSection, argumentSection.Value);
          }
          else
          {

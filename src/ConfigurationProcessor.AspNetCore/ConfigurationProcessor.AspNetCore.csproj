@@ -4,6 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Description>This library registers and configures services in a service collection using an IConfiguration object. Built from $(GIT_VERSION)</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -172,7 +172,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void WithArrayObjectNotation_MapNonStaticMethodToDelegate_ThrowsInvalidOperationException()
+      public void WithArrayNotation_MapNonStaticMethodToDelegate_ThrowsInvalidOperationException()
       {
          var json = @$"
 [{{
@@ -813,7 +813,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
    'ConfigurationAction': {{
       'Name': 'hello',
       'Value': {{
-            'Time' : '13:00:10'
+         'Time' : '13:00:10',
+         'Location': 'http://www.google.com'
+         // 'Type': '{NameOf<SimpleObject>()}',
+         // 'Delegate': '{NameOf<ConfigurationBuilderTestsBase>()}::{nameof(DummyDelegateField)}'
       }}
    }}
 }}";
@@ -824,6 +827,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.NotNull(option);
          Assert.Equal("hello", option.Value.Name);
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
+         Assert.Equal("http://www.google.com/", option.Value.Value.Location.ToString());
+         // notsupported
+         // Assert.Equal(typeof(SimpleObject), option.Value.Value.ContextType);
+         // Assert.Equal(DummyDelegateField, option.Value.Value.OnError);
       }
 
       [Fact]
@@ -950,7 +957,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
    'ConfigurationAction': {{
       'ConfigureByInterfaceName<!hello>': true,
       'ConfigureByInterfaceValue': {{
-            'Time' : '13:00:10'
+          'Time' : '13:00:10'
       }}
    }}
 }}";
@@ -964,16 +971,61 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void ConfigurationActionWithUpdateChildObject()
+      public void WithObjectNotation_CallMethodOnConfigurationObject_ExecutesMethod()
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'Value': {{
-            'Child': 'helloworld',
-            'Time': '00:22:00'
+         'Child': 'helloworld',
+         'Time': '00:22:00',
       }},
       'Reset': true
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Null(option.Value.Name);
+         Assert.Equal(TimeSpan.Zero, option.Value.Value.Time);
+      }
+
+      [Fact(Skip = "Fails")]
+      public void WithObjectNotation_CallMethodOnConfigurationChildObject_ExecutesMethod()
+      {
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'Value': {{
+         'Child': 'helloworld',
+         'Time': '00:22:00',
+         'Reset': true
+      }}
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Null(option.Value.Name);
+         Assert.Null(option.Value.Value.Child);
+      }
+
+      [Fact(Skip = "Fails")]
+      public void WithObjectNotation_CallExtensionMethodOnConfigurationChildObject_ExecutesMethod()
+      {
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'Value': {{
+         'Child': 'helloworld',
+         'Location': 'www.google.com',
+         'Time': '00:22:00',
+         'Reset2': true
+      }}
    }}
 }}";
 

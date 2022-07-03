@@ -222,5 +222,10 @@ namespace TestDummies
             configuration.Value.Time = timeSpan.Value;
          }
       }
+
+      public static void Reset2(this ComplexObject.ChildValue childValue)
+      {
+         childValue.Time = TimeSpan.Zero;
+      }
    }
 }

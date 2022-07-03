@@ -30,7 +30,18 @@ namespace TestDummies
       {
          public TimeSpan Time { get; set; }
 
+         public Uri Location { get; set; }
+
+         public Type ContextType { get; set; }
+
+         public Delegate OnError { get; set; }
+
          public string Child { get; set; }
+
+         public void Reset()
+         {
+            Child = null;
+         }
       }
    }
 }
