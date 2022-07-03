@@ -35,6 +35,11 @@ namespace ConfigurationProcessor.Core.Implementation
       {
          var argumentValue = Environment.ExpandEnvironmentVariables(providedValue);
 
+         if (toType == typeof(string))
+         {
+            return providedValue;
+         }
+
          var toTypeInfo = toType.GetTypeInfo();
          if (toTypeInfo.IsGenericType && toType.GetGenericTypeDefinition() == typeof(Nullable<>))
          {
