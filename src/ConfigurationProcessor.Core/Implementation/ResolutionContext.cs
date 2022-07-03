@@ -22,12 +22,6 @@ namespace ConfigurationProcessor.Core.Implementation
         private readonly IConfiguration? appConfiguration;
         private readonly IConfiguration? rootConfiguration;
 
-        [Obsolete("Depracated. Use ResolutionContext(AssemblyFinder, IConfiguration, IConfigurationSection, Type[])")]
-        public ResolutionContext(AssemblyFinder assemblyFinder, IConfigurationSection appConfiguration, params Type[] markerTypes)
-            : this(assemblyFinder, appConfiguration, appConfiguration, markerTypes)
-        {
-        }
-
         public ResolutionContext(AssemblyFinder assemblyFinder, IConfiguration rootConfiguration, IConfigurationSection appConfiguration, params Type[] markerTypes)
         {
             if (assemblyFinder != null && appConfiguration != null)

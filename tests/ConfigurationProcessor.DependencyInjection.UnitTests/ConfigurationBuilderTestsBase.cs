@@ -266,6 +266,53 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
         }
 
         [Fact]
+        public void AddingStringMapWithoutParameterNameSyntax()
+        {
+            var json = @$"
+{{
+    'Services': {{
+        'DummyStringMap': {{
+            'Hello': 'konnichiwa',
+            'Good morning': 'ohayou',
+            'Goodbye': 'dozvidanya'
+        }}
+    }}
+}}";
+
+            var serviceCollection = new TestServiceCollection();
+            TestBuilder(json, serviceCollection);
+
+            Assert.Collection(
+                serviceCollection,
+                sd => Assert.Equal(typeof(Dictionary<string, string>), sd.ServiceType));
+        }
+
+        [Theory]
+        [InlineData("Hello", false)]
+        [InlineData("Test", true)]
+        [InlineData("1246", true)]
+        public void AddingStringMapWithOverloadChoosesDictionaryOverloadBasedOnPropertyName(string firstPropertyName, bool usesDictionaryOverload)
+        {
+            var json = @$"
+{{
+    'Services': {{
+        'DummyStringMapInvalid': {{
+            '{firstPropertyName}': 'konnichiwa',
+            'Good morning': 'ohayou',
+            'Goodbye': 'dozvidanya'
+        }}
+    }}
+}}";
+
+            var serviceCollection = new TestServiceCollection();
+            TestBuilder(json, serviceCollection);
+
+            Assert.Collection(
+                serviceCollection,
+                sd => Assert.Equal(usesDictionaryOverload ? typeof(Dictionary<string, string>) : typeof(SimpleValue<string>), sd.ServiceType));
+        }
+
+        [Fact]
         public void AddingTypeListWithAlternateSyntax()
         {
             var json = @$"

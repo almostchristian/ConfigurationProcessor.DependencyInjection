@@ -111,6 +111,24 @@ namespace TestDummies
             return services;
         }
 
+        public static IServiceCollection AddDummyStringMap(this IServiceCollection services, Dictionary<string, string> mappings)
+        {
+            services.AddSingleton(mappings);
+            return services;
+        }
+
+        public static IServiceCollection AddDummyStringMapInvalid(this IServiceCollection services, Dictionary<string, string> mappings)
+        {
+            services.AddSingleton(mappings);
+            return services;
+        }
+
+        public static IServiceCollection AddDummyStringMapInvalid(this IServiceCollection services, string hello)
+        {
+            services.AddSingleton(new SimpleValue<string>(hello));
+            return services;
+        }
+
         public static IServiceCollection AddDummyTypeList(this IServiceCollection services, List<Type> types)
         {
             services.AddSingleton(types);

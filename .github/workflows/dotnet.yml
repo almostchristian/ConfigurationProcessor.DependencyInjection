@@ -3,6 +3,8 @@ name: .NET
 on:
   push:
     branches: [ "master" ]
+    paths:
+        - src/**
   pull_request:
     branches: [ "master" ]
 
@@ -22,9 +24,9 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal /p:TargetFrameworks=net6.0
+      run: dotnet test --configuration Release --no-build --verbosity normal /p:TargetFrameworks=net6.0 /p:GIT_VERSION=${{github.sha}}
     - name: upload packages
       uses: actions/upload-artifact@v3
       with:
-        name: packages
+        name: ${{github.run_number}}
         path: packages/
