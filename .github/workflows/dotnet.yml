@@ -22,11 +22,11 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --configuration Release --no-restore /p:GIT_VERSION=${{github.sha}}
     - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal /p:TargetFrameworks=net6.0 /p:GIT_VERSION=${{github.sha}}
+      run: dotnet test --configuration Release --no-build --verbosity normal /p:TargetFrameworks=net6.0
     - name: upload packages
       uses: actions/upload-artifact@v3
       with:
-        name: ${{github.run_number}}
+        name: configurationProcessor-${{github.run_number}}
         path: packages/
