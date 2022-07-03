@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>0.9.1</Version>
+        <Version>0.9.2</Version>
         <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
         <PackageVersion>$(Version)</PackageVersion>
         <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
@@ -21,7 +21,7 @@
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <Nullable>enable</Nullable>
-        <PackageTags>dependency injection;configuration;</PackageTags>
+        <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
