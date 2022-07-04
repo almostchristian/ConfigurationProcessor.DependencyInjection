@@ -3,7 +3,6 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using ConfigurationProcessor.Core;
 using Microsoft.Extensions.Configuration;
@@ -18,23 +17,60 @@ namespace Microsoft.Extensions.DependencyInjection
       /// <summary>
       /// Adds services from configuration.
       /// </summary>
-      /// <typeparam name="TServices">The service collection.</typeparam>
+      /// <param name="services">The service collection.</param>
+      /// <param name="configuration">The configuration to read from.</param>
+      /// <param name="servicesSection">The config section.</param>
+      /// <returns>The service collection for chaining.</returns>
+      /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration"/> is null.</exception>
+      public static IServiceCollection AddFromConfiguration(
+          this IServiceCollection services,
+          IConfiguration configuration,
+          string servicesSection)
+         => services.AddFromConfiguration(configuration, servicesSection, null, default(MethodFilterFactory), default);
+
+      /// <summary>
+      /// Adds services from configuration.
+      /// </summary>
       /// <param name="services">The service collection.</param>
       /// <param name="configuration">The configuration to read from.</param>
       /// <param name="servicesSection">The config section.</param>
       /// <param name="servicePaths">Additional service paths.</param>
       /// <param name="candidateMethodNameSuffixes">Candidate method name suffixes for matching.</param>
-      /// <param name="surrogateMethods">Additional methods that can be used for matching.</param>
+      /// <param name="additionalMethods">Additional methods that can be used for matching.</param>
       /// <returns>The service collection for chaining.</returns>
       /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration"/> is null.</exception>
-      public static TServices AddFromConfiguration<TServices>(
-          this TServices services,
+      public static IServiceCollection AddFromConfiguration(
+          this IServiceCollection services,
           IConfiguration configuration,
           string servicesSection,
-          string[]? servicePaths = null,
-          string[]? candidateMethodNameSuffixes = null,
-          MethodInfo[]? surrogateMethods = null)
-          where TServices : class, IEnumerable<ServiceDescriptor>
+          string[]? servicePaths,
+          string[]? candidateMethodNameSuffixes,
+          MethodInfo[]? additionalMethods = null)
+         => services.AddFromConfiguration(
+            configuration,
+            servicesSection,
+            servicePaths,
+            candidateMethodNameSuffixes != null ? MethodFilterFactories.WithSuffixes(candidateMethodNameSuffixes) : null,
+            additionalMethods);
+
+      /// <summary>
+      /// Adds services from configuration.
+      /// </summary>
+      /// <param name="services">The service collection.</param>
+      /// <param name="configuration">The configuration to read from.</param>
+      /// <param name="servicesSection">The config section.</param>
+      /// <param name="servicePaths">Additional service paths.</param>
+      /// <param name="methodFilterFactory">Factory for creating method filters.</param>
+      /// <param name="additionalMethods">Additional methods that can be used for matching.</param>
+      /// <returns>The service collection for chaining.</returns>
+      /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration"/> is null.</exception>
+      public static IServiceCollection AddFromConfiguration(
+          this IServiceCollection services,
+          IConfiguration configuration,
+          string servicesSection,
+          string[]? servicePaths,
+          MethodFilterFactory? methodFilterFactory,
+          MethodInfo[]? additionalMethods = null)
       {
          if (configuration == null)
          {
@@ -45,8 +81,8 @@ namespace Microsoft.Extensions.DependencyInjection
              services,
              servicesSection,
              servicePaths,
-             candidateMethodNameSuffixes,
-             surrogateMethods);
+             methodFilterFactory,
+             additionalMethods);
       }
    }
 }

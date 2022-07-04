@@ -12,18 +12,18 @@ namespace ConfigurationProcessor.Core.Implementation
    internal class ConfigurationReader<TConfig> : ConfigurationReader, IConfigurationReader<TConfig>
         where TConfig : class
    {
-      public ConfigurationReader(IConfigurationSection configSection, AssemblyFinder assemblyFinder, MethodInfo[] surrogateMethods, IConfiguration configuration = null!)
-          : base(new ResolutionContext(assemblyFinder, configuration!, configSection, typeof(TConfig)), configuration, assemblyFinder, configSection, surrogateMethods)
+      public ConfigurationReader(IConfigurationSection configSection, AssemblyFinder assemblyFinder, MethodInfo[] additionalMethods, IConfiguration configuration = null!)
+          : base(new ResolutionContext(assemblyFinder, configuration!, configSection, typeof(TConfig)), configuration, assemblyFinder, configSection, additionalMethods)
       {
       }
 
-      public void AddServices(TConfig builder, string? sectionName, bool getChildren, params string[] candidateMethodNameSuffixes)
+      public void AddServices(TConfig builder, string? sectionName, bool getChildren, MethodFilterFactory? methodFilterFactory)
       {
          var builderDirective = string.IsNullOrEmpty(sectionName) ? ConfigurationSection : ConfigurationSection.GetSection(sectionName);
          if (!getChildren || builderDirective.GetChildren().Any())
          {
             var methodCalls = GetMethodCalls(builderDirective, getChildren);
-            CallConfigurationMethods(ResolutionContext, typeof(TConfig), methodCalls, candidateMethodNameSuffixes, (arguments, methodInfo) =>
+            CallConfigurationMethods(ResolutionContext, typeof(TConfig), methodCalls, methodFilterFactory, (arguments, methodInfo) =>
             {
                if (methodInfo.IsStatic)
                {

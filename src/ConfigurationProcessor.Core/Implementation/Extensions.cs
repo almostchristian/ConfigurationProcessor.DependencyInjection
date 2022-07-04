@@ -103,9 +103,11 @@ namespace ConfigurationProcessor.Core.Implementation
 
       public static List<MethodInfo> FindConfigurationExtensionMethods(
           this ResolutionContext resolutionContext,
+          string key,
           Type configType,
           TypeResolver[] typeArgs,
-          List<string> candidateNames)
+          IEnumerable<string> candidateNames,
+          MethodFilter filter)
       {
          IReadOnlyCollection<Assembly> configurationAssemblies = resolutionContext.ConfigurationAssemblies;
 
@@ -115,6 +117,7 @@ namespace ConfigurationProcessor.Core.Implementation
                  .Where(t => t.IsSealed && t.IsAbstract && !t.IsNested))
              .Union(new[] { configType.GetTypeInfo() })
              .SelectMany(t => candidateNames.SelectMany(n => t.GetDeclaredMethods(n)))
+             .Where(m => filter(m, key))
              .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || m.DeclaringType == configType))
              .Where(m => !m.IsStatic || m.SafeGetParameters().ElementAtOrDefault(0)?.ParameterType.IsAssignableFrom(configType) == true) // If static method, checks that the first parameter is same as the extension type
              .ToList();
@@ -303,7 +306,7 @@ namespace ConfigurationProcessor.Core.Implementation
             selectedMethods = selectedMethods.Where(m =>
             {
                var requiredParamCount = m.GetParameters().Count(x => !x.IsOptional);
-               return requiredParamCount == suppliedArgumentNames.Count() + (m.IsStatic ? 1 : 0);
+               return requiredParamCount <= suppliedArgumentNames.Count() + (m.IsStatic ? 1 : 0);
             });
 
             if (selectedMethods.Count() > 1)

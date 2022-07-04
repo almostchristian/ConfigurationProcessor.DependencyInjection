@@ -15,20 +15,24 @@ namespace ConfigurationProcessor.Core.Implementation
 {
    internal abstract class ConfigurationReader
    {
-      private const char GenericTypeMarker = '`';
       private readonly IConfigurationSection section;
-      private readonly MethodInfo[] surrogateMethods;
+      private readonly MethodInfo[] additionalMethods;
       private readonly AssemblyFinder assemblyFinder;
       private readonly ResolutionContext resolutionContext;
       private readonly IConfiguration rootConfiguration;
 
-      protected ConfigurationReader(ResolutionContext resolutionContext, IConfiguration rootConfiguration, AssemblyFinder assemblyFinder, IConfigurationSection configSection, MethodInfo[] surrogateMethods)
+      protected ConfigurationReader(
+         ResolutionContext resolutionContext,
+         IConfiguration rootConfiguration,
+         AssemblyFinder assemblyFinder,
+         IConfigurationSection configSection,
+         MethodInfo[] additionalMethods)
       {
          this.resolutionContext = resolutionContext;
          this.rootConfiguration = rootConfiguration;
          this.assemblyFinder = assemblyFinder;
          this.section = configSection;
-         this.surrogateMethods = surrogateMethods;
+         this.additionalMethods = additionalMethods;
       }
 
       protected ResolutionContext ResolutionContext => this.resolutionContext;
@@ -121,16 +125,18 @@ namespace ConfigurationProcessor.Core.Implementation
           ResolutionContext resolutionContext,
           Type extensionArgumentType,
           ILookup<string, ConfigLookup> methods,
-          string[] candidateMethodNameSuffixes,
+          MethodFilterFactory? methodFilterFactory,
           Action<List<object>, MethodInfo> invoker)
       {
          foreach (var method in methods.SelectMany(g => g.Select(x => new { g.Key, Value = x })))
          {
             var typeArgs = method.Value.Item1;
             var paramArgs = method.Value.Item3;
-            var candidateNames = GetCandidateNames(method.Key, candidateMethodNameSuffixes);
-            List<MethodInfo> configurationMethods = resolutionContext.FindConfigurationExtensionMethods(extensionArgumentType, typeArgs, candidateNames);
-            configurationMethods.AddRange(surrogateMethods.Where(m => candidateNames.Contains(m.Name)));
+            methodFilterFactory ??= MethodFilterFactories.DefaultMethodFilterFactory;
+            var (methodFilter, candidateNames) = methodFilterFactory(method.Key);
+            IEnumerable<MethodInfo> configurationMethods = resolutionContext
+               .FindConfigurationExtensionMethods(method.Key, extensionArgumentType, typeArgs, candidateNames, methodFilter);
+            configurationMethods = configurationMethods.Union(additionalMethods.Where(m => methodFilter(m, method.Key))).ToList();
             var suppliedArgumentNames = paramArgs.Keys;
 
             var isCollection = suppliedArgumentNames.IsArray();
@@ -204,7 +210,6 @@ namespace ConfigurationProcessor.Core.Implementation
             else
             {
                var methodsByName = configurationMethods
-                   .Where(m => candidateNames.Contains(m.Name))
                    .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
                    .ToList();
 
@@ -223,30 +228,6 @@ namespace ConfigurationProcessor.Core.Implementation
                   + string.Join(Environment.NewLine, methodsByName));
                }
             }
-         }
-
-         static List<string> GetCandidateNames(string name, string[] candidateSuffixes)
-         {
-            var namesplit = name.Split(GenericTypeMarker);
-
-            var result = new List<string> { name };
-
-            if (candidateSuffixes.Length > 0)
-            {
-               if (namesplit.Length > 1)
-               {
-                  result.AddRange(candidateSuffixes.Select(x => $"{namesplit[0] + x}{GenericTypeMarker}{namesplit[1]}"));
-               }
-               else
-               {
-                  result.AddRange(candidateSuffixes.Select(x => name + x));
-               }
-            }
-
-            var withPrefix = result.Select(x => "Add" + x).ToList();
-            result.AddRange(withPrefix);
-
-            return result;
          }
       }
 
@@ -287,7 +268,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
                var methodCalls = GetMethodCalls(sourceConfigurationSection, true, excludeKeys);
 
-               CallConfigurationMethods(currentResolutionContext, argumentType, methodCalls, Array.Empty<string>(), (arguments, methodInfo) =>
+               CallConfigurationMethods(currentResolutionContext, argumentType, methodCalls, null, (arguments, methodInfo) =>
                {
                   var parameters = methodInfo.GetParameters();
 
