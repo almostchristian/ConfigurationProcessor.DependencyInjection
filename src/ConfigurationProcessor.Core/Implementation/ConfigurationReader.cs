@@ -136,7 +136,7 @@ namespace ConfigurationProcessor.Core.Implementation
             var (methodFilter, candidateNames) = methodFilterFactory(method.Key);
             IEnumerable<MethodInfo> configurationMethods = resolutionContext
                .FindConfigurationExtensionMethods(method.Key, extensionArgumentType, typeArgs, candidateNames, methodFilter);
-            configurationMethods = configurationMethods.Union(additionalMethods.Where(m => methodFilter(m, method.Key))).ToList();
+            configurationMethods = configurationMethods.Union(additionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, method.Key))).ToList();
             var suppliedArgumentNames = paramArgs.Keys;
 
             var isCollection = suppliedArgumentNames.IsArray();

@@ -5,7 +5,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>0.9.6</Version>
+        <Version>0.9.7</Version>
         <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
         <PackageVersion>$(Version)</PackageVersion>
         <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
