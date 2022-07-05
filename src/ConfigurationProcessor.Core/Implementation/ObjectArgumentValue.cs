@@ -28,10 +28,9 @@ namespace ConfigurationProcessor.Core.Implementation
             return section;
          }
 
-         // this can enter here when string is null
-         if (toType == typeof(string))
+         if (section.Value == null && !section.Exists())
          {
-            return section.Value;
+            return default!;
          }
 
          if (toType.IsArray)

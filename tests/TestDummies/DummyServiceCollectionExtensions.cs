@@ -225,7 +225,7 @@ namespace TestDummies
 
       public static void Reset2(this ComplexObject.ChildValue childValue)
       {
-         childValue.Time = TimeSpan.Zero;
+         childValue.Time = null;
       }
    }
 }

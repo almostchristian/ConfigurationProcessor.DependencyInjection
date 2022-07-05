@@ -40,6 +40,11 @@ namespace ConfigurationProcessor.Core.Implementation
             return providedValue;
          }
 
+         if (string.IsNullOrEmpty(argumentValue))
+         {
+            return null;
+         }
+
          var toTypeInfo = toType.GetTypeInfo();
          if (toTypeInfo.IsGenericType && toType.GetGenericTypeDefinition() == typeof(Nullable<>))
          {

@@ -22,13 +22,13 @@ namespace TestDummies
          if (Value != null)
          {
             Value.Child = null;
-            Value.Time = TimeSpan.Zero;
+            Value.Time = null;
          }
       }
 
       public class ChildValue
       {
-         public TimeSpan Time { get; set; }
+         public TimeSpan? Time { get; set; }
 
          public Uri Location { get; set; }
 

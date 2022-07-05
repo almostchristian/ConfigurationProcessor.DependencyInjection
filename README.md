@@ -1,10 +1,19 @@
 # ConfigurationProcessor.DependencyInjection
 
+[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.DependencyInjection.svg)](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection)
+[![NuGet](https://img.shields.io/nuget/dt/ConfigurationProcessor.DependencyInjection.svg)](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection)
+
+[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.Core.svg)](https://www.nuget.org/packages/ConfigurationProcessor.Core)
+[![NuGet](https://img.shields.io/nuget/dt/ConfigurationProcessor.Core.svg)](https://www.nuget.org/packages/ConfigurationProcessor.Core)
+
+[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.AspNetCore.svg)](https://www.nuget.org/packages/ConfigurationProcessor.AspNetCore)
+[![NuGet](https://img.shields.io/nuget/dt/ConfigurationProcessor.AspNetCore.svg)](https://www.nuget.org/packages/ConfigurationProcessor.AspNetCore)
+
 This library registers and configures services in a service collection using .NET's' configuration library.
 
 ## Example
 
-Given an application with a `ConfigureServices` section like below:
+Given an application with the following `ConfigureServices` section:
 
 ```csharp
 services.AddLogging();
@@ -22,7 +31,7 @@ services.Configure<CookiePolicyOptions>(options =>
 });
 ```
 
-The `ConfigureServices` method above can be moved to the configuration using the code and the appsettings.config configuration as in below:
+The `ConfigureServices` method above can be moved into the configuration using the following code and appsettings.config configuration:
 
 ```csharp
 services.AddFromConfiguration(Configuration, "Services");
@@ -52,10 +61,10 @@ Since we are using `IConfiguration`, we aren't limited to the appsettings.json f
 
 ## Basics
 
-The library works by using reflection and scanning all currently loaded assemblies for extension methods for `IServiceCollection`. This project was inspied by the [`Serilog.Settings.Configuration`](https://github.com/serilog/serilog-settings-configuration/) project.
+The library works by using reflection and scanning all currently loaded assemblies for extension methods for `IServiceCollection`. This project was inspired by the [`Serilog.Settings.Configuration`](https://github.com/serilog/serilog-settings-configuration/) project.
 
 ### Extension method mapping and overload resolution
-Given a configuration named `Logging`, an extension method named `AddLogging` or `Logging` will be filtered from the candidate extension methods. If multiple candidates are found, the best overload will be chosen based on the name of the input parameters.
+Given a configuration named `MyService`, an extension method named `AddMyService` or `MyService` will be filtered from the candidate extension methods. If multiple candidates are found, the best overload will be chosen based on the name of the input parameters.
 
 Given the following extension methods:
 ```csharp
@@ -136,7 +145,7 @@ public IServiceCollection AddMyService(this IServiceCollection services, params 
    "MyService" : [
       "salut",
       "hi",
-      "konichiwa"
+      "konnichiwa"
    ]
 }
 ```

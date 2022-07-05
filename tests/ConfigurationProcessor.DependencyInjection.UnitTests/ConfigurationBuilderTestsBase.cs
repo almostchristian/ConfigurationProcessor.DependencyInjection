@@ -834,6 +834,66 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateConfigureChildWithNullValues_GeneratedChildObjectHasDefaultMembers()
+      {
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'Name': 'hello',
+      'Value': {{
+         'Child': null,
+         'Time': null,
+         'Location': null,
+         'ContextType': null,
+         'OnError': null,
+      }}
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Equal("hello", option.Value.Name);
+         var childValue = option.Value.Value;
+         Assert.Empty(childValue.Child);
+         Assert.Null(childValue.Time);
+         Assert.Null(childValue.Location);
+         Assert.Null(childValue.ContextType);
+         Assert.Null(childValue.OnError);
+      }
+
+      [Fact]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateConfigureChildWithEmptyStringValues_GeneratedChildObjectHasDefaultMembers()
+      {
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'Name': 'hello',
+      'Value': {{
+         'Child': '',
+         'Time': '',
+         'Location': '',
+         'ContextType': '',
+         'OnError': '',
+      }}
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Equal("hello", option.Value.Name);
+         var childValue = option.Value.Value;
+         Assert.Empty(childValue.Child);
+         Assert.Null(childValue.Time);
+         Assert.Null(childValue.Location);
+         Assert.Null(childValue.ContextType);
+         Assert.Null(childValue.OnError);
+      }
+
+      [Fact]
       public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateWithTrueString_GeneratesEmptyConfigurationAction()
       {
          var json = @$"
@@ -989,7 +1049,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
 
          Assert.NotNull(option);
          Assert.Null(option.Value.Name);
-         Assert.Equal(TimeSpan.Zero, option.Value.Value.Time);
+         Assert.Null(option.Value.Value.Time);
       }
 
       [Fact]
@@ -1034,7 +1094,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
 
          Assert.NotNull(option);
          Assert.Null(option.Value.Name);
-         Assert.Equal(TimeSpan.Zero, option.Value.Value.Time);
+         Assert.Null(option.Value.Value.Time);
       }
 
       private IServiceProvider BuildFromJson(string json)
