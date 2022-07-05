@@ -28,6 +28,12 @@ namespace ConfigurationProcessor.Core.Implementation
             return section;
          }
 
+         // this can enter here when string is null
+         if (toType == typeof(string))
+         {
+            return section.Value;
+         }
+
          if (toType.IsArray)
          {
             return CreateArray();
