@@ -9,6 +9,6 @@ namespace ConfigurationProcessor.Core.Implementation
 {
    internal interface IConfigurationArgumentValue
    {
-      object? ConvertTo(MethodInfo method, Type toType, ResolutionContext resolutionContext);
+      object? ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext);
    }
 }

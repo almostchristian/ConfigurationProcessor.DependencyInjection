@@ -5,6 +5,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.ComponentModel;
 using TestDummies;
 using static ConfigurationProcessor.DependencyInjection.UnitTests.Support.Extensions;
 
@@ -814,9 +815,9 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       'Name': 'hello',
       'Value': {{
          'Time' : '13:00:10',
-         'Location': 'http://www.google.com'
-         // 'Type': '{NameOf<SimpleObject>()}',
-         // 'Delegate': '{NameOf<ConfigurationBuilderTestsBase>()}::{nameof(DummyDelegateField)}'
+         'Location': 'http://www.google.com',
+         'ContextType': '{NameOf<SimpleObject>()}',
+         'OnError': '{NameOf<ConfigurationBuilderTestsBase>()}::{nameof(DummyDelegateField)}'
       }}
    }}
 }}";
@@ -828,9 +829,8 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal("hello", option.Value.Name);
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
          Assert.Equal("http://www.google.com/", option.Value.Value.Location.ToString());
-         // notsupported
-         // Assert.Equal(typeof(SimpleObject), option.Value.Value.ContextType);
-         // Assert.Equal(DummyDelegateField, option.Value.Value.OnError);
+         Assert.Equal(typeof(SimpleObject), option.Value.Value.ContextType);
+         Assert.Equal(DummyDelegateField, option.Value.Value.OnError);
       }
 
       [Fact]
@@ -992,7 +992,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(TimeSpan.Zero, option.Value.Value.Time);
       }
 
-      [Fact(Skip = "Fails")]
+      [Fact]
       public void WithObjectNotation_CallMethodOnConfigurationChildObject_ExecutesMethod()
       {
          var json = @$"
@@ -1014,7 +1014,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Null(option.Value.Value.Child);
       }
 
-      [Fact(Skip = "Fails")]
+      [Fact]
       public void WithObjectNotation_CallExtensionMethodOnConfigurationChildObject_ExecutesMethod()
       {
          var json = @$"

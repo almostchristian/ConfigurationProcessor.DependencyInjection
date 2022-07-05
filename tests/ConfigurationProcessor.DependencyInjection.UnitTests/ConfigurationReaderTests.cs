@@ -35,10 +35,12 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
 
       public ConfigurationReaderTests()
       {
+         var rootConfig = new ConfigurationBuilder().Add(new JsonStringConfigSource(@"{ 'FhirEngine': {  } }")).Build();
          configurationReader = new ConfigurationReader<IServiceCollection>(
-             JsonStringConfigSource.LoadSection(@"{ 'FhirEngine': {  } }", "FhirEngine"),
-             AssemblyFinder.ForSource(ConfigurationAssemblySource.UseLoadedAssemblies),
-             Array.Empty<MethodInfo>());
+            rootConfig,
+            rootConfig.GetSection("FhirEngine"),
+            AssemblyFinder.ForSource(ConfigurationAssemblySource.UseLoadedAssemblies),
+            Array.Empty<MethodInfo>());
       }
 
       [Fact]

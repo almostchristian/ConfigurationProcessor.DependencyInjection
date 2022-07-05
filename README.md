@@ -10,6 +10,7 @@ Given an application with a `ConfigureServices` section like below:
 services.AddLogging();
 services.AddHsts(options =>
 {
+   options.ExcludedHosts.Clear();
    options.Preload = true;
    options.IncludeSubDomains = true;
    options.MaxAge = TimeSpan.FromDays(365);
@@ -32,6 +33,9 @@ services.AddFromConfiguration(Configuration, "Services");
    "Services": {
       "Logging": true,
       "Hsts": {
+         "ExcludedHosts": {
+            "Clear": true
+         },
          "Preload": true,
          "IncludeSubDomains": true,
          "MaxAge": "356.00:00:00"
@@ -152,7 +156,7 @@ public IServiceCollection AddMyService(this IServiceCollection services, Diction
 ```
 
 ### Supported string mappings
-Some .NET types can be mapped from a string in configuration. These additional mappings will not work in some binding scenarios.
+Some .NET types can be mapped from a string in configuration.
 
 
 |.NET Type                   |Example Configuration|C# Equivalent                   |

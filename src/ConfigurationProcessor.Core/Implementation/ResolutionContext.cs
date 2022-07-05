@@ -22,7 +22,12 @@ namespace ConfigurationProcessor.Core.Implementation
       private readonly IConfiguration? appConfiguration;
       private readonly IConfiguration? rootConfiguration;
 
-      public ResolutionContext(AssemblyFinder assemblyFinder, IConfiguration rootConfiguration, IConfigurationSection appConfiguration, params Type[] markerTypes)
+      public ResolutionContext(
+         AssemblyFinder assemblyFinder,
+         IConfiguration rootConfiguration,
+         IConfigurationSection appConfiguration,
+         MethodInfo[] additionalMethods,
+         params Type[] markerTypes)
       {
          if (assemblyFinder != null && appConfiguration != null)
          {
@@ -35,7 +40,13 @@ namespace ConfigurationProcessor.Core.Implementation
 
          this.appConfiguration = appConfiguration;
          this.rootConfiguration = rootConfiguration;
+         AssemblyFinder = assemblyFinder!;
+         AdditionalMethods = additionalMethods;
       }
+
+      public MethodInfo[] AdditionalMethods { get; }
+
+      public AssemblyFinder AssemblyFinder { get; }
 
       public bool HasAppConfiguration => appConfiguration != null;
 

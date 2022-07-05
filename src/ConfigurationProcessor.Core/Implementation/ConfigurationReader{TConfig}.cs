@@ -12,8 +12,8 @@ namespace ConfigurationProcessor.Core.Implementation
    internal class ConfigurationReader<TConfig> : ConfigurationReader, IConfigurationReader<TConfig>
         where TConfig : class
    {
-      public ConfigurationReader(IConfigurationSection configSection, AssemblyFinder assemblyFinder, MethodInfo[] additionalMethods, IConfiguration configuration = null!)
-          : base(new ResolutionContext(assemblyFinder, configuration!, configSection, typeof(TConfig)), configuration, assemblyFinder, configSection, additionalMethods)
+      public ConfigurationReader(IConfiguration configuration, IConfigurationSection configSection, AssemblyFinder assemblyFinder, MethodInfo[] additionalMethods)
+          : base(new ResolutionContext(assemblyFinder, configuration, configSection, additionalMethods, typeof(TConfig)), configuration, assemblyFinder, configSection)
       {
       }
 
@@ -22,19 +22,23 @@ namespace ConfigurationProcessor.Core.Implementation
          var builderDirective = string.IsNullOrEmpty(sectionName) ? ConfigurationSection : ConfigurationSection.GetSection(sectionName);
          if (!getChildren || builderDirective.GetChildren().Any())
          {
-            var methodCalls = GetMethodCalls(builderDirective, getChildren);
-            CallConfigurationMethods(ResolutionContext, typeof(TConfig), methodCalls, methodFilterFactory, (arguments, methodInfo) =>
-            {
-               if (methodInfo.IsStatic)
+            var methodCalls = ResolutionContext.GetMethodCalls(builderDirective, getChildren);
+            ResolutionContext.CallConfigurationMethods(
+               typeof(TConfig),
+               methodCalls,
+               methodFilterFactory,
+               (arguments, methodInfo) =>
                {
-                  arguments.Insert(0, builder);
-                  methodInfo.Invoke(null, arguments.ToArray());
-               }
-               else
-               {
-                  methodInfo.Invoke(builder, arguments.ToArray());
-               }
-            });
+                  if (methodInfo.IsStatic)
+                  {
+                     arguments.Insert(0, builder);
+                     methodInfo.Invoke(null, arguments.ToArray());
+                  }
+                  else
+                  {
+                     methodInfo.Invoke(builder, arguments.ToArray());
+                  }
+               });
          }
       }
    }

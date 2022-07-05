@@ -31,7 +31,7 @@ namespace ConfigurationProcessor.Core.Implementation
          this.providedValue = providedValue ?? throw new ArgumentNullException(nameof(providedValue));
       }
 
-      public object? ConvertTo(MethodInfo method, Type toType, ResolutionContext resolutionContext)
+      public object? ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext)
       {
          var argumentValue = Environment.ExpandEnvironmentVariables(providedValue);
 
@@ -74,7 +74,7 @@ namespace ConfigurationProcessor.Core.Implementation
             // like "Namespace.TypeName::StaticProperty, AssemblyName"
             if (TryParseStaticMemberAccessor(argumentValue, out var accessorTypeName, out var memberName))
             {
-               var accessorType = resolutionContext.GetType(accessorTypeName, resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(method, 0);
+               var accessorType = resolutionContext.GetType(accessorTypeName, resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(configurationMethod, 0);
 
                // if delegate, look for a method and then construct a delegate
                if (typeof(Delegate).IsAssignableFrom(toType) || typeof(MethodInfo) == toType)
@@ -139,7 +139,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
             // maybe it's the assembly-qualified type name of a concrete implementation
             // with a default constructor
-            var type = resolutionContext.GetType(argumentValue.Trim(), resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(method, 0);
+            var type = resolutionContext.GetType(argumentValue.Trim(), resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(configurationMethod, 0);
 
             var ctor = type.GetTypeInfo().DeclaredConstructors.FirstOrDefault(ci =>
             {

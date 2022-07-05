@@ -18,4 +18,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapGet("/", () => "hello");
+
 app.Run();
+public partial class Program { }

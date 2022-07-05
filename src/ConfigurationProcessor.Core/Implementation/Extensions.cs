@@ -7,22 +7,134 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
+using ConfigLookup = System.ValueTuple<ConfigurationProcessor.Core.Implementation.TypeResolver[], Microsoft.Extensions.Configuration.IConfigurationSection, System.Collections.Generic.Dictionary<string, (ConfigurationProcessor.Core.Implementation.IConfigurationArgumentValue ArgName, Microsoft.Extensions.Configuration.IConfigurationSection ConfigSection)>>;
 
 namespace ConfigurationProcessor.Core.Implementation
 {
    internal static class Extensions
    {
-      public static readonly MethodInfo BindMappableValuesMethod = ReflectionUtil.GetMethodInfo<object>(o => BindMappableValues(default!, default!, default!, default!, default!));
+      public static readonly MethodInfo BindMappableValuesMethod = ReflectionUtil.GetMethodInfo<object>(o => BindMappableValues(default!, default!, default!, default!, default!, default!));
       private const string GenericTypePattern = "(?<typename>[a-zA-Z][a-zA-Z0-9\\.]+)<(?<genparam>.+)>";
       private static readonly Regex GenericTypeRegex = new Regex(GenericTypePattern, RegexOptions.Compiled);
       private const char GenericTypeMarker = '`';
       private const char GenericTypeParameterSeparator = '|';
 
-      public static T SingleOrDefault<T>(this IEnumerable<T> source, FormattableString message)
+      public static void CallConfigurationMethods(
+          this ResolutionContext resolutionContext,
+          Type extensionArgumentType,
+          ILookup<string, ConfigLookup> methods,
+          MethodFilterFactory? methodFilterFactory,
+          Action<List<object>, MethodInfo> invoker)
+      {
+         foreach (var method in methods.SelectMany(g => g.Select(x => new { g.Key, Value = x })))
+         {
+            var typeArgs = method.Value.Item1;
+            var paramArgs = method.Value.Item3;
+            methodFilterFactory ??= MethodFilterFactories.DefaultMethodFilterFactory;
+            var (methodFilter, candidateNames) = methodFilterFactory(method.Key);
+            IEnumerable<MethodInfo> configurationMethods = resolutionContext
+               .FindConfigurationExtensionMethods(method.Key, extensionArgumentType, typeArgs, candidateNames, methodFilter);
+            configurationMethods = configurationMethods.Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, method.Key))).ToList();
+            var suppliedArgumentNames = paramArgs.Keys;
+
+            var isCollection = suppliedArgumentNames.IsArray();
+            MethodInfo? configurationMethod;
+            if (isCollection)
+            {
+               configurationMethod = configurationMethods
+                   .Where(m =>
+                   {
+                      var parameters = m.GetParameters();
+                      if (parameters.Length != (m.IsStatic ? 2 : 1))
+                      {
+                         return false;
+                      }
+
+                      var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
+                      return paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
+                   })
+                   .SingleOrDefault($"Ambigous match while searching for a method that accepts a list or array.");
+            }
+            else
+            {
+               configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames);
+
+               if (configurationMethod == null)
+               {
+                  // if the method could still not be found, look method that accepts a single dictionary
+                  configurationMethod = configurationMethods
+                      .Where(m =>
+                      {
+                         var parameters = m.GetParameters();
+                         if (parameters.Length != (m.IsStatic ? 2 : 1))
+                         {
+                            return false;
+                         }
+
+                         var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
+                         return paramType.IsGenericType && typeof(Dictionary<,>) == paramType.GetGenericTypeDefinition();
+                      })
+                      .SingleOrDefault($"Ambigous match while searching for a method that accepts Dictionary<,>.");
+
+                  if (configurationMethod != null)
+                  {
+                     paramArgs = new Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>
+                            {
+                                { string.Empty, (new ObjectArgumentValue(method.Value.Item2), method.Value.Item2) },
+                            };
+                  }
+               }
+            }
+
+            if (configurationMethod != null)
+            {
+               if (isCollection)
+               {
+                  var argValue = new ObjectArgumentValue(method.Value.Item2);
+                  var collectionType = configurationMethod.GetParameters().ElementAt(1).ParameterType;
+                  var collection = argValue.ConvertTo(configurationMethod, collectionType, resolutionContext);
+                  invoker(new List<object> { collection! }, configurationMethod);
+               }
+               else
+               {
+                  var call = (from p in configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0)
+                              let directive = paramArgs.FirstOrDefault<KeyValuePair<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>>(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key))
+                              select directive.Key == null
+                                  ? resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, method.Key)
+                                  : directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)).ToList<object>();
+                  invoker(call, configurationMethod);
+               }
+            }
+            else
+            {
+               var methodsByName = configurationMethods
+                   .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
+                   .ToList();
+
+               if (!methodsByName.Any())
+               {
+                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\". Candidate methods are:{Environment.NewLine}{string.Join(Environment.NewLine, configurationMethods)}");
+               }
+               else
+               {
+                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\" "
+                  + (suppliedArgumentNames.Any()
+                      ? "for supplied arguments: " + string.Join(", ", suppliedArgumentNames)
+                      : "with no supplied arguments")
+                  + ". Candidate methods are:"
+                  + Environment.NewLine
+                  + string.Join(Environment.NewLine, methodsByName));
+               }
+            }
+         }
+      }
+
+      private static T SingleOrDefault<T>(this IEnumerable<T> source, FormattableString message)
       {
          T result = default!;
          var enumerator = source.GetEnumerator();
@@ -45,7 +157,7 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static Dictionary<string, (IConfigurationArgumentValue Value, IConfigurationSection Section)> Blank(this IConfigurationSection section)
+      private static Dictionary<string, (IConfigurationArgumentValue Value, IConfigurationSection Section)> Blank(this IConfigurationSection section)
       {
          return new Dictionary<string, (IConfigurationArgumentValue, IConfigurationSection)>
                 {
@@ -53,7 +165,7 @@ namespace ConfigurationProcessor.Core.Implementation
                 };
       }
 
-      public static IEnumerable<IConfigurationSection> GetArgs(this IConfigurationSection parent)
+      private static IEnumerable<IConfigurationSection> GetArgs(this IConfigurationSection parent)
       {
          // integer key indicate this section is a member of an array
          var excludeName = int.TryParse(parent.Key, out _);
@@ -68,7 +180,7 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static IConfigurationArgumentValue GetArgumentValue(this IConfigurationSection argumentSection, IReadOnlyCollection<Assembly> configurationAssemblies)
+      public static IConfigurationArgumentValue GetArgumentValue(this IConfigurationSection argumentSection, ResolutionContext resolutionContext)
       {
          IConfigurationArgumentValue argumentValue;
 
@@ -89,19 +201,19 @@ namespace ConfigurationProcessor.Core.Implementation
          }
          else
          {
-            argumentValue = new ObjectArgumentValue(argumentSection, configurationAssemblies);
+            argumentValue = new ObjectArgumentValue(argumentSection);
          }
 
          return argumentValue;
       }
 
-      public static bool IsArray(this IEnumerable<string> suppliedArgumentNames)
+      private static bool IsArray(this IEnumerable<string> suppliedArgumentNames)
       {
          int count = 0;
          return suppliedArgumentNames.Any() && suppliedArgumentNames.All(i => int.TryParse(i, out var current) && current == count++);
       }
 
-      public static List<MethodInfo> FindConfigurationExtensionMethods(
+      private static List<MethodInfo> FindConfigurationExtensionMethods(
           this ResolutionContext resolutionContext,
           string key,
           Type configType,
@@ -112,14 +224,14 @@ namespace ConfigurationProcessor.Core.Implementation
          IReadOnlyCollection<Assembly> configurationAssemblies = resolutionContext.ConfigurationAssemblies;
 
          var candidateMethods = configurationAssemblies
-             .SelectMany(a => a.SafeGetExportedTypes()
+             .SelectMany(a => SafeGetExportedTypes(a)
                  .Select(t => t.GetTypeInfo())
                  .Where(t => t.IsSealed && t.IsAbstract && !t.IsNested))
              .Union(new[] { configType.GetTypeInfo() })
              .SelectMany(t => candidateNames.SelectMany(n => t.GetDeclaredMethods(n)))
              .Where(m => filter(m, key))
              .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || m.DeclaringType == configType))
-             .Where(m => !m.IsStatic || m.SafeGetParameters().ElementAtOrDefault(0)?.ParameterType.IsAssignableFrom(configType) == true) // If static method, checks that the first parameter is same as the extension type
+             .Where(m => !m.IsStatic || SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType.IsAssignableFrom(configType) == true) // If static method, checks that the first parameter is same as the extension type
              .ToList();
 
          if (typeArgs == null || typeArgs.Length == 0)
@@ -132,34 +244,57 @@ namespace ConfigurationProcessor.Core.Implementation
                 .Where(m => m.IsGenericMethod && CanMakeGeneric(m))
                 .Select(m => m.MakeGenericMethod(typeArgs.Select((t, i) => t(m, i)).ToArray()))
                 .ToList();
+         }
 
-            bool CanMakeGeneric(MethodInfo method)
+         static IEnumerable<Type> SafeGetExportedTypes(Assembly assembly)
+         {
+            try
             {
-               var genArgs = method.GetGenericArguments();
-               if (genArgs.Length == typeArgs.Length)
+               return assembly.ExportedTypes;
+            }
+            catch (FileNotFoundException)
+            {
+               return Array.Empty<Type>();
+            }
+         }
+
+         bool CanMakeGeneric(MethodInfo method)
+         {
+            var genArgs = method.GetGenericArguments();
+            if (genArgs.Length == typeArgs.Length)
+            {
+               try
                {
-                  try
-                  {
-                     method.MakeGenericMethod(typeArgs.Select((t, i) => t(method, i)).ToArray());
-                     return true;
-                  }
-                  catch (ArgumentException)
-                  {
-                     return false;
-                  }
+                  method.MakeGenericMethod(typeArgs.Select((t, i) => t(method, i)).ToArray());
+                  return true;
                }
-               else
+               catch (ArgumentException)
                {
                   return false;
                }
             }
+            else
+            {
+               return false;
+            }
+         }
+
+         static ParameterInfo[] SafeGetParameters(MethodInfo method)
+         {
+            try
+            {
+               return method.GetParameters();
+            }
+            catch (FileNotFoundException)
+            {
+               return Array.Empty<ParameterInfo>();
+            }
          }
       }
 
-      public static (string TypeName, TypeResolver[] Resolvers) ReadTypeName(
+      private static (string TypeName, TypeResolver[] Resolvers) ReadTypeName(
           this ResolutionContext resolutionContext,
           string name,
-          IConfiguration rootConfiguration,
           IConfiguration ambientConfiguration)
       {
          var match = GenericTypeRegex.Match(name);
@@ -186,7 +321,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
             foreach (var argument in args)
             {
-               targs.Add(resolutionContext.ReadGenericType(argument, rootConfiguration, ambientConfiguration));
+               targs.Add(resolutionContext.ReadGenericType(argument, resolutionContext.RootConfiguration, ambientConfiguration));
             }
 
             return (typeName, targs.ToArray());
@@ -197,7 +332,7 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static TypeResolver ReadGenericType(this ResolutionContext resolutionContext, string typeName, IConfiguration rootConfiguration, IConfiguration ambientConfiguration)
+      private static TypeResolver ReadGenericType(this ResolutionContext resolutionContext, string typeName, IConfiguration rootConfiguration, IConfiguration ambientConfiguration)
       {
          var match = GenericTypeRegex.Match(typeName);
          if (match.Success)
@@ -216,7 +351,7 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static int GetConfigurationMatchCount(this ParameterInfo paramInfo, IEnumerable<string> parameterNames)
+      private static int GetConfigurationMatchCount(this ParameterInfo paramInfo, IEnumerable<string> parameterNames)
       {
          if (IsConfigurationOptionsBuilder(paramInfo, out var argumentType))
          {
@@ -228,10 +363,10 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static bool IsConfigurationOptionsBuilder(this ParameterInfo paramInfo, [NotNullWhen(true)] out Type? argumentType)
+      private static bool IsConfigurationOptionsBuilder(this ParameterInfo paramInfo, [NotNullWhen(true)] out Type? argumentType)
          => IsConfigurationOptionsBuilder(paramInfo.ParameterType, out argumentType);
 
-      public static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
+      private static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
       {
          if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Action<>))
          {
@@ -247,32 +382,228 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static bool ParameterTypeHasPropertyMatches(this Type parameterType, IEnumerable<string> suppliedNames)
+      private static bool ParameterTypeHasPropertyMatches(this Type parameterType, IEnumerable<string> suppliedNames)
       {
          var parameterProps = parameterType.GetProperties().Select(x => x.Name).ToList();
          return suppliedNames.All(suppliedName => parameterProps.Any(x => suppliedName.Equals(x, StringComparison.OrdinalIgnoreCase)));
       }
 
       public static void BindMappableValues(
+          this ResolutionContext resolutionContext,
           object target,
           Type targetType,
-          MethodInfo method,
-          ResolutionContext resolutionContext,
-          Dictionary<string, IConfigurationArgumentValue> configurationValues)
+          MethodInfo configurationMethod,
+          IConfigurationSection sourceConfigurationSection,
+          params string[] excludedKeys)
       {
          var properties = targetType.GetProperties(BindingFlags.Instance | BindingFlags.Public);
+         var configurationValues = sourceConfigurationSection.GetChildren().ToDictionary(x => x.Key.ToUpperInvariant(), x => x.GetArgumentValue(resolutionContext));
+
          foreach (var property in properties.Where(p => p.CanWrite))
          {
             if (configurationValues.TryGetValue(property.Name.ToUpperInvariant(), out var configValue))
             {
-               property.SetValue(target, configValue.ConvertTo(method, property.PropertyType, resolutionContext));
+               property.SetValue(target, configValue.ConvertTo(configurationMethod, property.PropertyType, resolutionContext));
             }
+         }
+
+         var excludeKeys = new HashSet<string>(properties.Select(x => x.Name).Union(excludedKeys), StringComparer.OrdinalIgnoreCase);
+
+         var methodCalls = resolutionContext.GetMethodCalls(sourceConfigurationSection, true, excludeKeys);
+
+         resolutionContext.CallConfigurationMethods(
+            targetType,
+            methodCalls,
+            null,
+            (arguments, methodInfo) =>
+            {
+               if (methodInfo.IsStatic)
+               {
+                  var nargs = arguments.ToList();
+                  nargs.Insert(0, target);
+                  methodInfo.Invoke(null, nargs.ToArray());
+               }
+               else
+               {
+                  methodInfo.Invoke(target, arguments.ToArray());
+               }
+            });
+      }
+
+      private static Delegate GenerateLambda(
+         this ResolutionContext resolutionContext,
+         MethodInfo configurationMethod,
+         IConfigurationSection? sourceConfigurationSection,
+         Type argumentType,
+         string originalKey)
+      {
+         var typeParameter = Expression.Parameter(argumentType);
+         Expression bodyExpression;
+         if (sourceConfigurationSection?.Exists() == true)
+         {
+            var methodExpressions = new List<Expression>();
+
+            var childResolutionContext = new ResolutionContext(resolutionContext.AssemblyFinder, resolutionContext.RootConfiguration, sourceConfigurationSection, resolutionContext.AdditionalMethods, argumentType);
+
+            var keysToExclude = new List<string> { originalKey };
+            if (int.TryParse(sourceConfigurationSection.Key, out _))
+            {
+               // integer key indicates that this is from an array
+               keysToExclude.Add("Name");
+            }
+
+            // only do the binding if the argument type has a parameterless constructor
+            if (argumentType.GetConstructor(Type.EmptyTypes) != null)
+            {
+               // we want to return a generic lambda that calls bind c => configuration.Bind(c)
+               Expression<Action<object>> bindExpression = c => sourceConfigurationSection.Bind(c);
+               var bindMethodExpression = (MethodCallExpression)bindExpression.Body;
+               methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], typeParameter));
+
+               methodExpressions.Add(
+                  Expression.Call(
+                     BindMappableValuesMethod,
+                     Expression.Constant(childResolutionContext),
+                     typeParameter,
+                     Expression.Constant(argumentType),
+                     Expression.Constant(configurationMethod),
+                     Expression.Constant(sourceConfigurationSection),
+                     Expression.Constant(keysToExclude.ToArray())));
+            }
+
+            // the argument type is likely an interface type/abstract type.
+            // property binding does not happen
+            else
+            {
+               var excludeKeys = new HashSet<string>(argumentType.GetProperties().Select(x => x.Name).Union(keysToExclude), StringComparer.OrdinalIgnoreCase);
+
+               var methodCalls = childResolutionContext.GetMethodCalls(sourceConfigurationSection, true, excludeKeys);
+
+               childResolutionContext.CallConfigurationMethods(
+                  argumentType,
+                  methodCalls,
+                  null,
+                  (arguments, methodInfo) =>
+                  {
+                     var parameters = methodInfo.GetParameters();
+
+                     if (methodInfo.IsStatic)
+                     {
+                        var narguments = arguments.Select((x, i) => (Expression)Expression.Constant(x, parameters[i + 1].ParameterType)).ToList();
+                        narguments.Insert(0, typeParameter);
+                        methodExpressions.Add(Expression.Call(methodInfo, narguments));
+                     }
+                     else
+                     {
+                        var narguments = arguments.Select((x, i) => (Expression)Expression.Constant(x, parameters[i].ParameterType)).ToList();
+                        methodExpressions.Add(Expression.Call(typeParameter, methodInfo, narguments));
+                     }
+                  });
+            }
+
+            bodyExpression = Expression.Block(methodExpressions);
+         }
+         else
+         {
+            bodyExpression = Expression.Empty();
+         }
+
+         var lambda = Expression.Lambda(typeof(Action<>).MakeGenericType(argumentType), bodyExpression, typeParameter).Compile();
+         return lambda;
+      }
+
+      internal static ILookup<string, ConfigLookup> GetMethodCalls(
+         this ConfigurationReader configurationReader,
+         IConfigurationSection directive,
+         bool getChildren = true,
+         IEnumerable<string>? exclude = null)
+         => configurationReader.ResolutionContext.GetMethodCalls(directive, getChildren, exclude);
+
+      internal static ILookup<string, ConfigLookup> GetMethodCalls(
+         this ResolutionContext resolutionContext,
+         IConfigurationSection directive,
+         bool getChildren = true,
+         IEnumerable<string>? exclude = null)
+      {
+         IEnumerable<IConfigurationSection> children;
+         if (getChildren)
+         {
+            children = directive.GetChildren()
+                .Where(x => exclude == null || !exclude.Contains(x.Key, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+         }
+         else
+         {
+            children = new[] { directive };
+         }
+
+         int count = 0;
+         var arrayChildren = children.TakeWhile(x => int.TryParse(x.Key, out var current) && current == count++).ToList();
+         var nonarrayChildren = children.Except(arrayChildren);
+
+         IEnumerable<(string, ConfigLookup)>? result = Enumerable.Empty<(string, ConfigLookup)>();
+         if (arrayChildren.Any())
+         {
+            result = from child in arrayChildren
+                     where !string.IsNullOrEmpty(child.Value) && !bool.TryParse(child.Value, out var _) // Plain string
+                     let childName = FromPlainString(child, resolutionContext)
+                     select (childName.Name, new ConfigLookup(childName.TypeArgs, child, new Dictionary<string, (IConfigurationArgumentValue, IConfigurationSection)>()));
+         }
+
+         result = result.Union(from child in children
+                               where string.IsNullOrEmpty(child.Value) || (bool.TryParse(child.Value, out var flag) && flag)
+                               let n = GetSectionName(child, resolutionContext)
+                               let callArgs = (from argument in child.GetArgs()
+                                               select new
+                                               {
+                                                  Name = argument.Key,
+                                                  Value = argument.GetArgumentValue(resolutionContext),
+                                                  Source = child,
+                                               }).ToDictionary(p => p.Name, p => (p.Value, p.Source))
+                               select (n.Name, new ConfigLookup(n.TypeArgs, child, callArgs)));
+
+         result = result.Union(from child in nonarrayChildren
+                               where !string.IsNullOrEmpty(child.Value) && !bool.TryParse(child.Value, out var flag)
+                               select (child.Key, new ConfigLookup(Array.Empty<TypeResolver>(), child, child.Blank())));
+
+         return result
+                 .Where(x => exclude == null || !exclude.Contains(x.Item1, StringComparer.OrdinalIgnoreCase))
+                 .ToLookup(p => p.Item1, p => p.Item2);
+
+         (string Name, TypeResolver[] TypeArgs) FromPlainString(IConfigurationSection s, ResolutionContext resolutionContext)
+         {
+            var value = s.Value;
+            return resolutionContext.ReadTypeName(value, s);
+         }
+
+         (string Name, TypeResolver[] TypeArgs) GetSectionName(IConfigurationSection s, ResolutionContext resolutionContext)
+         {
+            string name;
+
+            if (int.TryParse(s.Key, out var result))
+            {
+               // parent uses an array json notation
+               var nsection = s.GetSection("Name");
+
+               if (nsection.Value == null)
+               {
+                  throw new InvalidOperationException($"The configuration value in {nsection.Path} has no 'Name' element.");
+               }
+
+               name = nsection.Value;
+            }
+            else
+            {
+               // parent uses an object json notation. We use the property name as the
+               name = s.Key;
+            }
+
+            return resolutionContext.ReadTypeName(name, s);
          }
       }
 
-      internal static MethodInfo? SelectConfigurationMethod(
-          this ResolutionContext resolutionContext,
-          IEnumerable<MethodInfo> candidateMethods,
+      private static MethodInfo? SelectConfigurationMethod(
+          this IEnumerable<MethodInfo> candidateMethods,
           IEnumerable<string> suppliedArgumentNames)
       {
          // Per issue #111, it is safe to use case-insensitive matching on argument names. The CLR doesn't permit this type
@@ -332,7 +663,7 @@ namespace ConfigurationProcessor.Core.Implementation
          return selectedMethod;
       }
 
-      public static bool HasImplicitValueWhenNotSpecified(this ParameterInfo paramInfo)
+      private static bool HasImplicitValueWhenNotSpecified(this ParameterInfo paramInfo)
       {
          return paramInfo.HasDefaultValue
 
@@ -351,28 +682,48 @@ namespace ConfigurationProcessor.Core.Implementation
          return suppliedNames.Any(s => ParameterNameMatches(actualParameterName, s));
       }
 
-      private static IEnumerable<Type> SafeGetExportedTypes(this Assembly assembly)
+      private static object? GetImplicitValueForNotSpecifiedKey(
+         this ResolutionContext resolutionContext,
+         ParameterInfo parameter,
+         MethodInfo configurationMethod,
+         IConfigurationSection? sourceConfigurationSection,
+         string originalKey)
       {
-         try
+         if (parameter.IsConfigurationOptionsBuilder(out var argumentType))
          {
-            return assembly.ExportedTypes;
+            return resolutionContext.GenerateLambda(configurationMethod, sourceConfigurationSection, argumentType, originalKey);
          }
-         catch (FileNotFoundException)
-         {
-            return Array.Empty<Type>();
-         }
-      }
 
-      private static ParameterInfo[] SafeGetParameters(this MethodInfo method)
-      {
-         try
+         if (!parameter.HasImplicitValueWhenNotSpecified())
          {
-            return method.GetParameters();
+            var parameterInstance = Activator.CreateInstance(parameter.ParameterType);
+
+            sourceConfigurationSection.Bind(parameterInstance);
+
+            return parameterInstance;
          }
-         catch (FileNotFoundException)
+
+         if (parameter.ParameterType == typeof(IConfiguration))
          {
-            return Array.Empty<ParameterInfo>();
+            if (resolutionContext.HasAppConfiguration)
+            {
+               return resolutionContext.AppConfiguration;
+            }
+
+            if (parameter.HasDefaultValue)
+            {
+               return parameter.DefaultValue;
+            }
+
+            throw new InvalidOperationException("Trying to invoke a configuration method accepting a `IConfiguration` argument. " +
+                                                          $"This is not supported when only a `IConfigSection` has been provided. (method '{configurationMethod}')");
          }
+         else if (parameter.ParameterType == typeof(IConfigurationSection))
+         {
+            return sourceConfigurationSection;
+         }
+
+         return parameter.DefaultValue;
       }
    }
 }

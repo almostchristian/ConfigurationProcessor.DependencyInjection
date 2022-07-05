@@ -63,7 +63,7 @@ namespace ConfigurationProcessor.Core
           AssemblyFinder assemblyFinder)
           where TConfig : class
       {
-         var reader = new ConfigurationReader<TConfig>(configurationSection, assemblyFinder, additionalMethods, rootConfiguration);
+         var reader = new ConfigurationReader<TConfig>(rootConfiguration, configurationSection, assemblyFinder, additionalMethods);
 
          foreach (var servicePath in servicePaths)
          {

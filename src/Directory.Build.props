@@ -1,92 +1,92 @@
 <Project>
-    <PropertyGroup>
-        <NoWarn>$(NoWarn);NU5128;NU5105;</NoWarn>
-        <PackageOutputPath>$(MSBuildThisFileDirectory)..\packages</PackageOutputPath>
-    </PropertyGroup>
+   <PropertyGroup>
+      <NoWarn>$(NoWarn);NU5128;NU5105;</NoWarn>
+      <PackageOutputPath>$(MSBuildThisFileDirectory)..\packages</PackageOutputPath>
+   </PropertyGroup>
 
-    <PropertyGroup>
-        <Version>0.9.7</Version>
-        <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
-        <PackageVersion>$(Version)</PackageVersion>
-        <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
-        <Authors>almostchristian</Authors>
-        <PackageProjectUrl>https://github.com/almostchristian/ConfigurationProcessor.DependencyInjection</PackageProjectUrl>
-        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-        <WarningsAsErrors />
-        <DebugType>Portable</DebugType>
-        <HighEntropyVA>true</HighEntropyVA>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <IsPackable>true</IsPackable>
-        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-        <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <Nullable>enable</Nullable>
-        <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-    </PropertyGroup>
+   <PropertyGroup>
+      <Version>0.9.8</Version>
+      <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
+      <PackageVersion>$(Version)</PackageVersion>
+      <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
+      <Authors>almostchristian</Authors>
+      <PackageProjectUrl>https://github.com/almostchristian/ConfigurationProcessor.DependencyInjection</PackageProjectUrl>
+      <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+      <WarningsAsErrors />
+      <DebugType>Portable</DebugType>
+      <HighEntropyVA>true</HighEntropyVA>
+      <GenerateDocumentationFile>true</GenerateDocumentationFile>
+      <IsPackable>true</IsPackable>
+      <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+      <PackageLicenseFile>LICENSE</PackageLicenseFile>
+      <Nullable>enable</Nullable>
+      <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
+      <PackageReadmeFile>README.md</PackageReadmeFile>
+   </PropertyGroup>
 
-    <ItemGroup>
-        <None Include="$(MSBuildThisFileDirectory)\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-    </ItemGroup>
+   <ItemGroup>
+      <None Include="$(MSBuildThisFileDirectory)\..\README.md">
+         <Pack>True</Pack>
+         <PackagePath>\</PackagePath>
+      </None>
+   </ItemGroup>
 
-    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <DebugSymbols>true</DebugSymbols>
-        <IncludeSymbols>true</IncludeSymbols>
-        <PublishRepositoryUrl>true</PublishRepositoryUrl>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-        <EnablePackageValidation>true</EnablePackageValidation>
-        <EnableNETAnalyzers>true</EnableNETAnalyzers>
-        <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+      <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+      <DebugSymbols>true</DebugSymbols>
+      <IncludeSymbols>true</IncludeSymbols>
+      <PublishRepositoryUrl>true</PublishRepositoryUrl>
+      <EmbedUntrackedSources>true</EmbedUntrackedSources>
+      <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+      <EnablePackageValidation>true</EnablePackageValidation>
+      <EnableNETAnalyzers>true</EnableNETAnalyzers>
+      <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+   </PropertyGroup>
 
-    <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
-        <NoWarn>$(NoWarn);CA1062</NoWarn>
-    </PropertyGroup>
+   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+      <NoWarn>$(NoWarn);CA1062</NoWarn>
+   </PropertyGroup>
 
-    <PropertyGroup Condition="'$(TargetFramework)'!='net6.0'">
-        <LangVersion>10.0</LangVersion>
-    </PropertyGroup>
+   <PropertyGroup Condition="'$(TargetFramework)'!='net6.0'">
+      <LangVersion>10.0</LangVersion>
+   </PropertyGroup>
 
-    <ItemGroup>
-        <None Include="$(MSBuildThisFileDirectory)LICENSE">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-        </None>
-    </ItemGroup>
+   <ItemGroup>
+      <None Include="$(MSBuildThisFileDirectory)LICENSE">
+         <Pack>True</Pack>
+         <PackagePath></PackagePath>
+      </None>
+   </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
-        <PackageReference Include="Nullable" Version="1.3.0">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
+   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+      <PackageReference Include="Nullable" Version="1.3.0">
+         <PrivateAssets>all</PrivateAssets>
+         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+   </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis" Version="4.2.0" PrivateAssets="all">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="ReflectionAnalyzers" Version="0.3.1">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.*">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="SonarAnalyzer.CSharp" Version="8.*">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <AdditionalFiles Include="$(MSBuildThisFileDirectory)\..\stylecop.json" Link="stylecop.json" />
-    </ItemGroup>
+   <ItemGroup>
+      <PackageReference Include="Microsoft.CodeAnalysis" Version="4.2.0" PrivateAssets="all">
+         <PrivateAssets>all</PrivateAssets>
+         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="ReflectionAnalyzers" Version="0.3.1">
+         <PrivateAssets>all</PrivateAssets>
+         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+         <PrivateAssets>all</PrivateAssets>
+         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.*">
+         <PrivateAssets>all</PrivateAssets>
+         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="SonarAnalyzer.CSharp" Version="8.*">
+         <PrivateAssets>all</PrivateAssets>
+         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <AdditionalFiles Include="$(MSBuildThisFileDirectory)\..\stylecop.json" Link="stylecop.json" />
+   </ItemGroup>
 
 </Project>

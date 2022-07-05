@@ -14,17 +14,13 @@ namespace ConfigurationProcessor.Core.Implementation
    internal class ObjectArgumentValue : IConfigurationArgumentValue
    {
       private readonly IConfigurationSection section;
-      private readonly IReadOnlyCollection<Assembly> configurationAssemblies;
 
-      public ObjectArgumentValue(IConfigurationSection section, IReadOnlyCollection<Assembly> configurationAssemblies)
+      public ObjectArgumentValue(IConfigurationSection section)
       {
          this.section = section ?? throw new ArgumentNullException(nameof(section));
-
-         // used by nested logger configurations to feed a new pass by ConfigurationReader
-         this.configurationAssemblies = configurationAssemblies ?? throw new ArgumentNullException(nameof(configurationAssemblies));
       }
 
-      public object ConvertTo(MethodInfo method, Type toType, ResolutionContext resolutionContext)
+      public object ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext)
       {
          // return the entire section for internal processing
          if (toType == typeof(IConfigurationSection))
@@ -42,8 +38,9 @@ namespace ConfigurationProcessor.Core.Implementation
             return result!;
          }
 
-         // MS Config binding can work with a limited set of primitive types and collections
-         return section.Get(toType, o => o.ErrorOnUnknownConfiguration = true);
+         var newInstance = Activator.CreateInstance(toType);
+         resolutionContext.BindMappableValues(newInstance, toType, configurationMethod, section);
+         return newInstance;
 
          object CreateArray()
          {
@@ -52,8 +49,8 @@ namespace ConfigurationProcessor.Core.Implementation
             var result = Array.CreateInstance(elementType!, configurationElements.Length);
             for (int i = 0; i < configurationElements.Length; ++i)
             {
-               var argumentValue = configurationElements[i].GetArgumentValue(configurationAssemblies);
-               var value = argumentValue.ConvertTo(method, elementType!, resolutionContext);
+               var argumentValue = configurationElements[i].GetArgumentValue(resolutionContext);
+               var value = argumentValue.ConvertTo(configurationMethod, elementType!, resolutionContext);
                result.SetValue(value, i);
             }
 
@@ -87,9 +84,9 @@ namespace ConfigurationProcessor.Core.Implementation
                for (int i = 0; i < configurationElements.Length; ++i)
                {
                   var keyValue = new StringArgumentValue(configurationElements[i], configurationElements[i].Key);
-                  var argumentValue = configurationElements[i].GetArgumentValue(configurationAssemblies);
-                  var key = keyValue.ConvertTo(method, keyType, resolutionContext);
-                  var value = argumentValue.ConvertTo(method, valueType, resolutionContext);
+                  var argumentValue = configurationElements[i].GetArgumentValue(resolutionContext);
+                  var key = keyValue.ConvertTo(configurationMethod, keyType, resolutionContext);
+                  var value = argumentValue.ConvertTo(configurationMethod, valueType, resolutionContext);
                   addMethod.Invoke(result, new object[] { key!, value! });
                }
             }
@@ -107,8 +104,8 @@ namespace ConfigurationProcessor.Core.Implementation
 
                for (int i = 0; i < configurationElements.Length; ++i)
                {
-                  var argumentValue = configurationElements[i].GetArgumentValue(configurationAssemblies);
-                  var value = argumentValue.ConvertTo(method, elementType, resolutionContext);
+                  var argumentValue = configurationElements[i].GetArgumentValue(resolutionContext);
+                  var value = argumentValue.ConvertTo(configurationMethod, elementType, resolutionContext);
                   addMethod.Invoke(result, new object[] { value! });
                }
             }

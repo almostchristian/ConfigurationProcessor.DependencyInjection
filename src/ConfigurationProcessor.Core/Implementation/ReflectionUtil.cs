@@ -151,11 +151,7 @@ namespace ConfigurationProcessor.Core.Implementation
                tb.SetCustomAttribute(new CustomAttributeBuilder(body.Constructor!, body.Arguments.Cast<ConstantExpression>().Select(x => x.Value).ToArray()));
             }
 
-#if NETSTANDARD2_0
             var newtype = tb.CreateTypeInfo()!.AsType()!;
-#else
-                var newtype = tb.CreateType()!;
-#endif
             return newtype;
          });
       }
