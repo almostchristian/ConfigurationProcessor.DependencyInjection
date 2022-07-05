@@ -1,12 +1,10 @@
 # ConfigurationProcessor.DependencyInjection
 
-[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.DependencyInjection.svg)](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection)
+[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.DependencyInjection.svg?label=ConfigurationProcessor.DependencyInjection)](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection)
 [![NuGet](https://img.shields.io/nuget/dt/ConfigurationProcessor.DependencyInjection.svg)](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection)
 
-[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.Core.svg)](https://www.nuget.org/packages/ConfigurationProcessor.Core)
-[![NuGet](https://img.shields.io/nuget/dt/ConfigurationProcessor.Core.svg)](https://www.nuget.org/packages/ConfigurationProcessor.Core)
 
-[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.AspNetCore.svg)](https://www.nuget.org/packages/ConfigurationProcessor.AspNetCore)
+[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.AspNetCore.svg?label=ConfigurationProcessor.AspNetCore)](https://www.nuget.org/packages/ConfigurationProcessor.AspNetCore)
 [![NuGet](https://img.shields.io/nuget/dt/ConfigurationProcessor.AspNetCore.svg)](https://www.nuget.org/packages/ConfigurationProcessor.AspNetCore)
 
 This library registers and configures services in a service collection using .NET's' configuration library.
@@ -34,7 +32,12 @@ services.Configure<CookiePolicyOptions>(options =>
 The `ConfigureServices` method above can be moved into the configuration using the following code and appsettings.config configuration:
 
 ```csharp
+// .NET 5.0, .NET Core 3.1 and below using ConfigurationProcessor.DependencyInjection
 services.AddFromConfiguration(Configuration, "Services");
+
+// .NET 6.0 with ConfigurationProcessor.AspNetCore
+var builder = WebApplication.CreateBuilder(args);
+builder.AddFromConfiguration("Services");
 ```
 
 ```json
