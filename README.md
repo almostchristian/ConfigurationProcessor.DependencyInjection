@@ -208,3 +208,22 @@ The configuration below maps to `services.AddMyService(config => config.OnError 
    }
 }
 ```
+
+### Execution Order
+ConfigurationProcessor uses `IConfiguration.GetChildren()` to retrieve the methods to execute. The configuration key names are sorted alphabetically, and there is no supported mechanism to retrieve the original sort order. 
+
+Given the configuration below:
+```json
+{
+   "MyService" : {
+      "ConfigureB": { "Value": 1 },
+      "ConfigureZ": { "Value": 5 },
+      "ConfigureA": { "Value": 4 }
+   }
+}
+```
+
+The order of the methods executed will be `ConfigureA`, `ConfigureB` and then `ConfigureZ`;
+
+## Credits
+[`Serilog.Settings.Configuration`](https://github.com/serilog/serilog-settings-configuration/) which is the basis for this project.

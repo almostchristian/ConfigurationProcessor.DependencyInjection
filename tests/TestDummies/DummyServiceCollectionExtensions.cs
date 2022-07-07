@@ -227,5 +227,10 @@ namespace TestDummies
       {
          childValue.Time = null;
       }
+
+      public static void Append<T>(this ComplexObject obj, string value)
+      {
+         obj.Name += value;
+      }
    }
 }

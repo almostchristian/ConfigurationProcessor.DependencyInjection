@@ -77,15 +77,32 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void WithArrayNotation_MapWithUnknownExtensionMethod_ThrowsMissingMethodException()
+      public void WithArrayNotation_MapWithUnknownExtensionMethod_ThrowsMissingMethodExceptionWithListOfAllExtensionMethods()
       {
          var json = @$"
 [{{
-   'Name': 'AddDummyDelegatexxx',
+   'Name': 'AddDummyDelegxxx',
    'DummyDelegate': '{NameOf<DelegateMembers>()}::{nameof(DelegateMembers.TestDelegate)}'
 }}]";
 
-         Assert.Throws<MissingMethodException>(() => ProcessJson(json));
+         var exception = Assert.Throws<MissingMethodException>(() => ProcessJson(json));
+
+         Assert.Contains("AddDummyDelegate", exception.Message);
+      }
+
+      [Fact]
+      public void WithObjectNotation_MapExtensionMethodWithNonMatchingNamedParameter_ThrowsMissingMethodExceptionWithListOfAllMatchingOverloads()
+      {
+         var json = @$"
+{{
+   'SimpleString': {{
+      'DummyDelegate': '{NameOf<DelegateMembers>()}::{nameof(DelegateMembers.TestDelegate)}'
+   }}
+}}";
+
+         var exception = Assert.Throws<MissingMethodException>(() => ProcessJson(json));
+
+         Assert.Contains("AddSimpleString(value)", exception.Message);
       }
 
       [Fact]
@@ -1095,6 +1112,26 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.NotNull(option);
          Assert.Null(option.Value.Name);
          Assert.Null(option.Value.Value.Time);
+      }
+
+      [Fact]
+      public void WithObjectNotation_CallExtensionMethodOnConfigurationObject_ExecutesInAlphabeticalOrderOfConfiguration()
+      {
+         // IConfiguration sorts the keys when calling GetChildren()
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'Name': 'helloworld',
+      'Append<@x>': {{ 'value': '1' }},
+      'Append<@a>': {{ 'value': '2' }},
+      'Append<@b>': {{ 'value': '3' }},
+      'Append<@y>': {{ 'value': '4' }},
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+         Assert.Equal("helloworld2314", option.Value.Name);
       }
 
       private IServiceProvider BuildFromJson(string json)

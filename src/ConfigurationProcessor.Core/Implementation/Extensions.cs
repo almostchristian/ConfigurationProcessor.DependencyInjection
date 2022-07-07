@@ -31,15 +31,15 @@ namespace ConfigurationProcessor.Core.Implementation
           MethodFilterFactory? methodFilterFactory,
           Action<List<object>, MethodInfo> invoker)
       {
-         foreach (var method in methods.SelectMany(g => g.Select(x => new { g.Key, Value = x })))
+         foreach (var (methodName, (typeArgs, configSection, configArgs)) in methods.SelectMany(g => g.Select(x => (MethodName: g.Key, Config: x))))
          {
-            var typeArgs = method.Value.Item1;
-            var paramArgs = method.Value.Item3;
+            var paramArgs = configArgs;
             methodFilterFactory ??= MethodFilterFactories.DefaultMethodFilterFactory;
-            var (methodFilter, candidateNames) = methodFilterFactory(method.Key);
+
+            var (methodFilter, candidateNames) = methodFilterFactory(methodName);
             IEnumerable<MethodInfo> configurationMethods = resolutionContext
-               .FindConfigurationExtensionMethods(method.Key, extensionArgumentType, typeArgs, candidateNames, methodFilter);
-            configurationMethods = configurationMethods.Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, method.Key))).ToList();
+               .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, candidateNames, methodFilter);
+            configurationMethods = configurationMethods.Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, methodName))).ToList();
             var suppliedArgumentNames = paramArgs.Keys;
 
             var isCollection = suppliedArgumentNames.IsArray();
@@ -58,7 +58,7 @@ namespace ConfigurationProcessor.Core.Implementation
                       var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
                       return paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
                    })
-                   .SingleOrDefault($"Ambigous match while searching for a method that accepts a list or array.");
+                   .SingleOrDefault($"Ambiguous match while searching for a method that accepts a list or array.");
             }
             else
             {
@@ -84,9 +84,9 @@ namespace ConfigurationProcessor.Core.Implementation
                   if (configurationMethod != null)
                   {
                      paramArgs = new Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>
-                            {
-                                { string.Empty, (new ObjectArgumentValue(method.Value.Item2), method.Value.Item2) },
-                            };
+                     {
+                        { string.Empty, (new ObjectArgumentValue(configSection), configSection) },
+                     };
                   }
                }
             }
@@ -95,7 +95,7 @@ namespace ConfigurationProcessor.Core.Implementation
             {
                if (isCollection)
                {
-                  var argValue = new ObjectArgumentValue(method.Value.Item2);
+                  var argValue = new ObjectArgumentValue(configSection);
                   var collectionType = configurationMethod.GetParameters().ElementAt(1).ParameterType;
                   var collection = argValue.ConvertTo(configurationMethod, collectionType, resolutionContext);
                   invoker(new List<object> { collection! }, configurationMethod);
@@ -105,26 +105,30 @@ namespace ConfigurationProcessor.Core.Implementation
                   var call = (from p in configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0)
                               let directive = paramArgs.FirstOrDefault<KeyValuePair<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>>(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key))
                               select directive.Key == null
-                                  ? resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, method.Key)
+                                  ? resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, methodName)
                                   : directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)).ToList<object>();
                   invoker(call, configurationMethod);
                }
             }
             else
             {
-               var methodsByName = configurationMethods
-                   .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
-                   .ToList();
-
-               if (!methodsByName.Any())
+               if (!configurationMethods.Any())
                {
-                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\". Candidate methods are:{Environment.NewLine}{string.Join(Environment.NewLine, configurationMethods)}");
+                  var allExtensionMethods = resolutionContext
+                     .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, null, null)
+                     .Select(x => x.Name).Distinct();
+
+                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\" for type '{extensionArgumentType}'. Extension method names for type are:{Environment.NewLine}{string.Join(Environment.NewLine, allExtensionMethods)}");
                }
                else
                {
-                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\" "
+                  var methodsByName = configurationMethods
+                      .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
+                      .ToList();
+
+                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\" for type '{extensionArgumentType}' "
                   + (suppliedArgumentNames.Any()
-                      ? "for supplied arguments: " + string.Join(", ", suppliedArgumentNames)
+                      ? "for supplied named arguments: " + string.Join(", ", suppliedArgumentNames)
                       : "with no supplied arguments")
                   + ". Candidate methods are:"
                   + Environment.NewLine
@@ -134,92 +138,13 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      private static T SingleOrDefault<T>(this IEnumerable<T> source, FormattableString message)
-      {
-         T result = default!;
-         var enumerator = source.GetEnumerator();
-         if (!enumerator.MoveNext())
-         {
-            return result;
-         }
-         else
-         {
-            result = enumerator.Current!;
-         }
-
-         if (enumerator.MoveNext())
-         {
-            throw new InvalidOperationException($"{message} Matches are :{Environment.NewLine}{string.Join(Environment.NewLine, source)}");
-         }
-         else
-         {
-            return result;
-         }
-      }
-
-      private static Dictionary<string, (IConfigurationArgumentValue Value, IConfigurationSection Section)> Blank(this IConfigurationSection section)
-      {
-         return new Dictionary<string, (IConfigurationArgumentValue, IConfigurationSection)>
-                {
-                    { string.Empty, (new StringArgumentValue(section, section.Value), section) },
-                };
-      }
-
-      private static IEnumerable<IConfigurationSection> GetArgs(this IConfigurationSection parent)
-      {
-         // integer key indicate this section is a member of an array
-         var excludeName = int.TryParse(parent.Key, out _);
-         var args = parent.GetSection("Args");
-         if (args.Exists())
-         {
-            return args.GetChildren();
-         }
-         else
-         {
-            return parent.GetChildren().Where(x => !excludeName || x.Key != "Name");
-         }
-      }
-
-      public static IConfigurationArgumentValue GetArgumentValue(this IConfigurationSection argumentSection, ResolutionContext resolutionContext)
-      {
-         IConfigurationArgumentValue argumentValue;
-
-         // Reject configurations where an element has both scalar and complex
-         // values as a result of reading multiple configuration sources.
-         if (argumentSection.Value != null && argumentSection.GetChildren().Any())
-         {
-            throw new InvalidOperationException(
-                $"The value for the argument '{argumentSection.Path}' is assigned different value " +
-                "types in more than one configuration source. Ensure all configurations consistently " +
-                "use either a scalar (int, string, boolean) or a complex (array, section, list, " +
-                "POCO, etc.) type for this argument value.");
-         }
-
-         if (argumentSection.Value != null)
-         {
-            argumentValue = new StringArgumentValue(argumentSection, argumentSection.Value);
-         }
-         else
-         {
-            argumentValue = new ObjectArgumentValue(argumentSection);
-         }
-
-         return argumentValue;
-      }
-
-      private static bool IsArray(this IEnumerable<string> suppliedArgumentNames)
-      {
-         int count = 0;
-         return suppliedArgumentNames.Any() && suppliedArgumentNames.All(i => int.TryParse(i, out var current) && current == count++);
-      }
-
       private static List<MethodInfo> FindConfigurationExtensionMethods(
           this ResolutionContext resolutionContext,
           string key,
           Type configType,
           TypeResolver[] typeArgs,
-          IEnumerable<string> candidateNames,
-          MethodFilter filter)
+          IEnumerable<string>? candidateNames,
+          MethodFilter? filter)
       {
          IReadOnlyCollection<Assembly> configurationAssemblies = resolutionContext.ConfigurationAssemblies;
 
@@ -228,8 +153,8 @@ namespace ConfigurationProcessor.Core.Implementation
                  .Select(t => t.GetTypeInfo())
                  .Where(t => t.IsSealed && t.IsAbstract && !t.IsNested))
              .Union(new[] { configType.GetTypeInfo() })
-             .SelectMany(t => candidateNames.SelectMany(n => t.GetDeclaredMethods(n)))
-             .Where(m => filter(m, key))
+             .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
+             .Where(m => filter == null || filter(m, key))
              .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || m.DeclaringType == configType))
              .Where(m => !m.IsStatic || SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType.IsAssignableFrom(configType) == true) // If static method, checks that the first parameter is same as the extension type
              .ToList();
@@ -349,43 +274,6 @@ namespace ConfigurationProcessor.Core.Implementation
          {
             return resolutionContext.GetType(typeName, rootConfiguration, ambientConfiguration);
          }
-      }
-
-      private static int GetConfigurationMatchCount(this ParameterInfo paramInfo, IEnumerable<string> parameterNames)
-      {
-         if (IsConfigurationOptionsBuilder(paramInfo, out var argumentType))
-         {
-            return parameterNames.Intersect(argumentType.GetProperties().Select(x => x.Name)).Count();
-         }
-         else
-         {
-            return 0;
-         }
-      }
-
-      private static bool IsConfigurationOptionsBuilder(this ParameterInfo paramInfo, [NotNullWhen(true)] out Type? argumentType)
-         => IsConfigurationOptionsBuilder(paramInfo.ParameterType, out argumentType);
-
-      private static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
-      {
-         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Action<>))
-         {
-            argumentType = type.GenericTypeArguments[0];
-
-            // we only accept class types that contain a parameterless public constructor
-            return argumentType.IsClass;
-         }
-         else
-         {
-            argumentType = null;
-            return false;
-         }
-      }
-
-      private static bool ParameterTypeHasPropertyMatches(this Type parameterType, IEnumerable<string> suppliedNames)
-      {
-         var parameterProps = parameterType.GetProperties().Select(x => x.Name).ToList();
-         return suppliedNames.All(suppliedName => parameterProps.Any(x => suppliedName.Equals(x, StringComparison.OrdinalIgnoreCase)));
       }
 
       public static void BindMappableValues(
@@ -512,12 +400,49 @@ namespace ConfigurationProcessor.Core.Implementation
          return lambda;
       }
 
-      internal static ILookup<string, ConfigLookup> GetMethodCalls(
-         this ConfigurationReader configurationReader,
-         IConfigurationSection directive,
-         bool getChildren = true,
-         IEnumerable<string>? exclude = null)
-         => configurationReader.ResolutionContext.GetMethodCalls(directive, getChildren, exclude);
+      private static object? GetImplicitValueForNotSpecifiedKey(
+         this ResolutionContext resolutionContext,
+         ParameterInfo parameter,
+         MethodInfo configurationMethod,
+         IConfigurationSection? sourceConfigurationSection,
+         string originalKey)
+      {
+         if (parameter.IsConfigurationOptionsBuilder(out var argumentType))
+         {
+            return resolutionContext.GenerateLambda(configurationMethod, sourceConfigurationSection, argumentType, originalKey);
+         }
+
+         if (!parameter.HasImplicitValueWhenNotSpecified())
+         {
+            var parameterInstance = Activator.CreateInstance(parameter.ParameterType);
+
+            sourceConfigurationSection.Bind(parameterInstance);
+
+            return parameterInstance;
+         }
+
+         if (parameter.ParameterType == typeof(IConfiguration))
+         {
+            if (resolutionContext.HasAppConfiguration)
+            {
+               return resolutionContext.AppConfiguration;
+            }
+
+            if (parameter.HasDefaultValue)
+            {
+               return parameter.DefaultValue;
+            }
+
+            throw new InvalidOperationException("Trying to invoke a configuration method accepting a `IConfiguration` argument. " +
+                                                          $"This is not supported when only a `IConfigSection` has been provided. (method '{configurationMethod}')");
+         }
+         else if (parameter.ParameterType == typeof(IConfigurationSection))
+         {
+            return sourceConfigurationSection;
+         }
+
+         return parameter.DefaultValue;
+      }
 
       internal static ILookup<string, ConfigLookup> GetMethodCalls(
          this ResolutionContext resolutionContext,
@@ -602,6 +527,36 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
+      internal static ILookup<string, ConfigLookup> GetMethodCalls(
+         this ConfigurationReader configurationReader,
+         IConfigurationSection directive,
+         bool getChildren = true,
+         IEnumerable<string>? exclude = null)
+         => configurationReader.ResolutionContext.GetMethodCalls(directive, getChildren, exclude);
+
+      private static T SingleOrDefault<T>(this IEnumerable<T> source, FormattableString message)
+      {
+         T result = default!;
+         var enumerator = source.GetEnumerator();
+         if (!enumerator.MoveNext())
+         {
+            return result;
+         }
+         else
+         {
+            result = enumerator.Current!;
+         }
+
+         if (enumerator.MoveNext())
+         {
+            throw new InvalidOperationException($"{message} Matches are :{Environment.NewLine}{string.Join(Environment.NewLine, source)}");
+         }
+         else
+         {
+            return result;
+         }
+      }
+
       private static MethodInfo? SelectConfigurationMethod(
           this IEnumerable<MethodInfo> candidateMethods,
           IEnumerable<string> suppliedArgumentNames)
@@ -663,6 +618,74 @@ namespace ConfigurationProcessor.Core.Implementation
          return selectedMethod;
       }
 
+      private static bool IsArray(this IEnumerable<string> suppliedArgumentNames)
+      {
+         int count = 0;
+         return suppliedArgumentNames.Any() && suppliedArgumentNames.All(i => int.TryParse(i, out var current) && current == count++);
+      }
+
+      private static Dictionary<string, (IConfigurationArgumentValue Value, IConfigurationSection Section)> Blank(this IConfigurationSection section)
+      {
+         return new Dictionary<string, (IConfigurationArgumentValue, IConfigurationSection)>
+                {
+                    { string.Empty, (new StringArgumentValue(section, section.Value), section) },
+                };
+      }
+
+      private static IEnumerable<IConfigurationSection> GetArgs(this IConfigurationSection parent)
+      {
+         // integer key indicate this section is a member of an array
+         var excludeName = int.TryParse(parent.Key, out _);
+         var args = parent.GetSection("Args");
+         if (args.Exists())
+         {
+            return args.GetChildren();
+         }
+         else
+         {
+            return parent.GetChildren().Where(x => !excludeName || x.Key != "Name");
+         }
+      }
+
+      public static IConfigurationArgumentValue GetArgumentValue(this IConfigurationSection argumentSection, ResolutionContext resolutionContext)
+      {
+         IConfigurationArgumentValue argumentValue;
+
+         // Reject configurations where an element has both scalar and complex
+         // values as a result of reading multiple configuration sources.
+         if (argumentSection.Value != null && argumentSection.GetChildren().Any())
+         {
+            throw new InvalidOperationException(
+                $"The value for the argument '{argumentSection.Path}' is assigned different value " +
+                "types in more than one configuration source. Ensure all configurations consistently " +
+                "use either a scalar (int, string, boolean) or a complex (array, section, list, " +
+                "POCO, etc.) type for this argument value.");
+         }
+
+         if (argumentSection.Value != null)
+         {
+            argumentValue = new StringArgumentValue(argumentSection, argumentSection.Value);
+         }
+         else
+         {
+            argumentValue = new ObjectArgumentValue(argumentSection);
+         }
+
+         return argumentValue;
+      }
+
+      private static int GetConfigurationMatchCount(this ParameterInfo paramInfo, IEnumerable<string> parameterNames)
+      {
+         if (IsConfigurationOptionsBuilder(paramInfo, out var argumentType))
+         {
+            return parameterNames.Intersect(argumentType.GetProperties().Select(x => x.Name)).Count();
+         }
+         else
+         {
+            return 0;
+         }
+      }
+
       private static bool HasImplicitValueWhenNotSpecified(this ParameterInfo paramInfo)
       {
          return paramInfo.HasDefaultValue
@@ -672,58 +695,35 @@ namespace ConfigurationProcessor.Core.Implementation
             || paramInfo.ParameterType == typeof(IConfigurationSection);
       }
 
-      private static bool ParameterNameMatches(string actualParameterName, string suppliedName)
+      private static bool IsConfigurationOptionsBuilder(this ParameterInfo paramInfo, [NotNullWhen(true)] out Type? argumentType)
+         => IsConfigurationOptionsBuilder(paramInfo.ParameterType, out argumentType);
+
+      private static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
       {
-         return suppliedName.Equals(actualParameterName, StringComparison.OrdinalIgnoreCase);
+         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Action<>))
+         {
+            argumentType = type.GenericTypeArguments[0];
+
+            // we only accept class types that contain a parameterless public constructor
+            return argumentType.IsClass;
+         }
+         else
+         {
+            argumentType = null;
+            return false;
+         }
       }
+
+      private static bool ParameterTypeHasPropertyMatches(this Type parameterType, IEnumerable<string> suppliedNames)
+      {
+         var parameterProps = parameterType.GetProperties().Select(x => x.Name).ToList();
+         return suppliedNames.All(suppliedName => parameterProps.Any(x => suppliedName.Equals(x, StringComparison.OrdinalIgnoreCase)));
+      }
+
+      private static bool ParameterNameMatches(string actualParameterName, string suppliedName)
+         => suppliedName.Equals(actualParameterName, StringComparison.OrdinalIgnoreCase);
 
       private static bool ParameterNameMatches(string actualParameterName, IEnumerable<string> suppliedNames)
-      {
-         return suppliedNames.Any(s => ParameterNameMatches(actualParameterName, s));
-      }
-
-      private static object? GetImplicitValueForNotSpecifiedKey(
-         this ResolutionContext resolutionContext,
-         ParameterInfo parameter,
-         MethodInfo configurationMethod,
-         IConfigurationSection? sourceConfigurationSection,
-         string originalKey)
-      {
-         if (parameter.IsConfigurationOptionsBuilder(out var argumentType))
-         {
-            return resolutionContext.GenerateLambda(configurationMethod, sourceConfigurationSection, argumentType, originalKey);
-         }
-
-         if (!parameter.HasImplicitValueWhenNotSpecified())
-         {
-            var parameterInstance = Activator.CreateInstance(parameter.ParameterType);
-
-            sourceConfigurationSection.Bind(parameterInstance);
-
-            return parameterInstance;
-         }
-
-         if (parameter.ParameterType == typeof(IConfiguration))
-         {
-            if (resolutionContext.HasAppConfiguration)
-            {
-               return resolutionContext.AppConfiguration;
-            }
-
-            if (parameter.HasDefaultValue)
-            {
-               return parameter.DefaultValue;
-            }
-
-            throw new InvalidOperationException("Trying to invoke a configuration method accepting a `IConfiguration` argument. " +
-                                                          $"This is not supported when only a `IConfigSection` has been provided. (method '{configurationMethod}')");
-         }
-         else if (parameter.ParameterType == typeof(IConfigurationSection))
-         {
-            return sourceConfigurationSection;
-         }
-
-         return parameter.DefaultValue;
-      }
+         => suppliedNames.Any(s => ParameterNameMatches(actualParameterName, s));
    }
 }
