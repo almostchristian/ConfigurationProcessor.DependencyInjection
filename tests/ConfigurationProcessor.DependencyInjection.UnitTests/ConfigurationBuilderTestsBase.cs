@@ -1004,6 +1004,66 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
+      public void ConfigurationActionInterfaceWithInterfaceExtensionMethods()
+      {
+         var json = @$"
+{{
+   'ConfigurationActionInterface': {{
+      'ConfigureByInterfaceValue': {{
+            'Time' : '13:00:10'
+      }}
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IComplexObject>();
+
+         Assert.NotNull(option);
+         Assert.Null(option.Value.Child);
+         Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Time);
+      }
+
+      [Fact]
+      public void ConfigurationActionInterfaceWithInterfaceExtensionMethodsForBaseInterface()
+      {
+         var json = @$"
+{{
+   'ConfigurationActionInterface': {{
+      'ConfigureByInterfaceValueBaseInterface': {{
+            'Time' : '13:00:10'
+      }}
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IComplexObject>();
+
+         Assert.NotNull(option);
+         Assert.Null(option.Value.Child);
+         Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Time);
+      }
+
+      [Fact]
+      public void ConfigurationActionWithInterfaceExtensionMethodsForBaseInterface()
+      {
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'ConfigureByInterfaceValueBaseInterface': {{
+            'Time' : '13:00:10'
+      }}
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Null(option.Value.Value.Child);
+         Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
+      }
+
+      [Fact]
       public void ConfigurationActionWithExtensionForInterfaceMethods()
       {
          var json = @$"

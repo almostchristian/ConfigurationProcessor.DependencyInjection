@@ -5,7 +5,7 @@
    </PropertyGroup>
 
    <PropertyGroup>
-      <Version>1.0.0</Version>
+      <Version>1.1.0</Version>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
       <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
@@ -22,6 +22,12 @@
       <Nullable>enable</Nullable>
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
+      <PackageReleaseNotes>
+         v1.1.0
+          - Added support for binding with interface configuration actions
+         v1.0.0
+          - Initial release
+      </PackageReleaseNotes>
    </PropertyGroup>
 
    <ItemGroup>
@@ -56,13 +62,6 @@
          <Pack>True</Pack>
          <PackagePath></PackagePath>
       </None>
-   </ItemGroup>
-
-   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
-      <PackageReference Include="Nullable" Version="1.3.0">
-         <PrivateAssets>all</PrivateAssets>
-         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      </PackageReference>
    </ItemGroup>
 
    <ItemGroup>

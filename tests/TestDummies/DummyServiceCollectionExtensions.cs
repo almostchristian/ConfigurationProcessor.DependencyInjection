@@ -182,6 +182,14 @@ namespace TestDummies
          return services;
       }
 
+      public static IServiceCollection AddConfigurationActionInterface(this IServiceCollection services, Action<IComplexObject> configureOptions)
+      {
+         var obj = new ComplexObject();
+         configureOptions(obj);
+         services.AddSingleton<IComplexObject>(obj);
+         return services;
+      }
+
       public static IServiceCollection AddConfigurationAction2(this IServiceCollection services, Action<SimpleObject> configureOptions)
       {
          services.Configure(configureOptions);
@@ -208,6 +216,12 @@ namespace TestDummies
       }
 
       public static void AddConfigureByInterfaceValue(this IComplexObject configuration, Action<ComplexObject.ChildValue> configureValue)
+      {
+         configuration.Value ??= new ComplexObject.ChildValue();
+         configureValue(configuration.Value);
+      }
+
+      public static void AddConfigureByInterfaceValueBaseInterface(this IComplexObject configuration, Action<IChildValue> configureValue)
       {
          configuration.Value ??= new ComplexObject.ChildValue();
          configureValue(configuration.Value);

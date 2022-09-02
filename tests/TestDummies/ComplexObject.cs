@@ -26,7 +26,7 @@ namespace TestDummies
          }
       }
 
-      public class ChildValue
+      public class ChildValue : IChildValue
       {
          public TimeSpan? Time { get; set; }
 

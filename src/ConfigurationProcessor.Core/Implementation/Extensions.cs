@@ -340,54 +340,20 @@ namespace ConfigurationProcessor.Core.Implementation
                keysToExclude.Add("Name");
             }
 
-            // only do the binding if the argument type has a parameterless constructor
-            if (argumentType.GetConstructor(Type.EmptyTypes) != null)
-            {
-               // we want to return a generic lambda that calls bind c => configuration.Bind(c)
-               Expression<Action<object>> bindExpression = c => sourceConfigurationSection.Bind(c);
-               var bindMethodExpression = (MethodCallExpression)bindExpression.Body;
-               methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], typeParameter));
+            // we want to return a generic lambda that calls bind c => configuration.Bind(c)
+            Expression<Action<object>> bindExpression = c => sourceConfigurationSection.Bind(c);
+            var bindMethodExpression = (MethodCallExpression)bindExpression.Body;
+            methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], typeParameter));
 
-               methodExpressions.Add(
-                  Expression.Call(
-                     BindMappableValuesMethod,
-                     Expression.Constant(childResolutionContext),
-                     typeParameter,
-                     Expression.Constant(argumentType),
-                     Expression.Constant(configurationMethod),
-                     Expression.Constant(sourceConfigurationSection),
-                     Expression.Constant(keysToExclude.ToArray())));
-            }
-
-            // the argument type is likely an interface type/abstract type.
-            // property binding does not happen
-            else
-            {
-               var excludeKeys = new HashSet<string>(argumentType.GetProperties().Select(x => x.Name).Union(keysToExclude), StringComparer.OrdinalIgnoreCase);
-
-               var methodCalls = childResolutionContext.GetMethodCalls(sourceConfigurationSection, true, excludeKeys);
-
-               childResolutionContext.CallConfigurationMethods(
-                  argumentType,
-                  methodCalls,
-                  null,
-                  (arguments, methodInfo) =>
-                  {
-                     var parameters = methodInfo.GetParameters();
-
-                     if (methodInfo.IsStatic)
-                     {
-                        var narguments = arguments.Select((x, i) => (Expression)Expression.Constant(x, parameters[i + 1].ParameterType)).ToList();
-                        narguments.Insert(0, typeParameter);
-                        methodExpressions.Add(Expression.Call(methodInfo, narguments));
-                     }
-                     else
-                     {
-                        var narguments = arguments.Select((x, i) => (Expression)Expression.Constant(x, parameters[i].ParameterType)).ToList();
-                        methodExpressions.Add(Expression.Call(typeParameter, methodInfo, narguments));
-                     }
-                  });
-            }
+            methodExpressions.Add(
+               Expression.Call(
+                  BindMappableValuesMethod,
+                  Expression.Constant(childResolutionContext),
+                  typeParameter,
+                  Expression.Constant(argumentType),
+                  Expression.Constant(configurationMethod),
+                  Expression.Constant(sourceConfigurationSection),
+                  Expression.Constant(keysToExclude.ToArray())));
 
             bodyExpression = Expression.Block(methodExpressions);
          }
@@ -705,7 +671,7 @@ namespace ConfigurationProcessor.Core.Implementation
             argumentType = type.GenericTypeArguments[0];
 
             // we only accept class types that contain a parameterless public constructor
-            return argumentType.IsClass;
+            return true;
          }
          else
          {
