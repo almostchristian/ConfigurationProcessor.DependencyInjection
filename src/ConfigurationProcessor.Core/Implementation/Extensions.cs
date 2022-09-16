@@ -181,6 +181,10 @@ namespace ConfigurationProcessor.Core.Implementation
             {
                return Array.Empty<Type>();
             }
+            catch (TypeLoadException)
+            {
+               return Array.Empty<Type>();
+            }
          }
 
          bool CanMakeGeneric(MethodInfo method)
