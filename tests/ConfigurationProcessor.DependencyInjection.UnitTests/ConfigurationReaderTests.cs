@@ -40,7 +40,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
             rootConfig,
             rootConfig.GetSection("FhirEngine"),
             AssemblyFinder.ForSource(ConfigurationAssemblySource.UseLoadedAssemblies),
-            Array.Empty<MethodInfo>());
+            new Core.ConfigurationReaderOptions());
       }
 
       [Fact]
@@ -107,7 +107,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              kvp =>
              {
                 Assert.Equal("mappings", kvp.Key);
-                Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null)));
+                Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null, _ => { })));
              });
       }
 
@@ -140,7 +140,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              kvp =>
              {
                 Assert.Equal("mappings", kvp.Key);
-                Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null)));
+                Assert.Equal("{Message}", kvp.Value.ArgName.ConvertTo(default, typeof(string), new ResolutionContext(null, (IConfiguration)null, null, null, _ => { })));
              });
       }
    }

@@ -26,7 +26,8 @@ namespace ConfigurationProcessor.Core.Implementation
          AssemblyFinder assemblyFinder,
          IConfiguration rootConfiguration,
          IConfigurationSection appConfiguration,
-         MethodInfo[] additionalMethods,
+         IEnumerable<MethodInfo> additionalMethods,
+         Action<ExtensionMethodNotFoundEventArgs> onExtensionMethodNotFound,
          params Type[] markerTypes)
       {
          if (assemblyFinder != null && appConfiguration != null)
@@ -38,13 +39,16 @@ namespace ConfigurationProcessor.Core.Implementation
             ConfigurationAssemblies = new List<Assembly>();
          }
 
+         OnExtensionMethodNotFound = onExtensionMethodNotFound;
          this.appConfiguration = appConfiguration;
          this.rootConfiguration = rootConfiguration;
          AssemblyFinder = assemblyFinder!;
          AdditionalMethods = additionalMethods;
       }
 
-      public MethodInfo[] AdditionalMethods { get; }
+      public Action<ExtensionMethodNotFoundEventArgs> OnExtensionMethodNotFound { get; }
+
+      public IEnumerable<MethodInfo> AdditionalMethods { get; }
 
       public AssemblyFinder AssemblyFinder { get; }
 

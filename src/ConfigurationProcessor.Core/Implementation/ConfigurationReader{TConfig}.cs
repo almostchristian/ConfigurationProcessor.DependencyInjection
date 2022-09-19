@@ -2,6 +2,7 @@
 // Copyright (c) almostchristian. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
+using System;
 using System.Linq;
 using System.Reflection;
 using ConfigurationProcessor.Core.Assemblies;
@@ -12,12 +13,12 @@ namespace ConfigurationProcessor.Core.Implementation
    internal class ConfigurationReader<TConfig> : ConfigurationReader, IConfigurationReader<TConfig>
         where TConfig : class
    {
-      public ConfigurationReader(IConfiguration configuration, IConfigurationSection configSection, AssemblyFinder assemblyFinder, MethodInfo[] additionalMethods)
-          : base(new ResolutionContext(assemblyFinder, configuration, configSection, additionalMethods, typeof(TConfig)), configuration, assemblyFinder, configSection)
+      public ConfigurationReader(IConfiguration configuration, IConfigurationSection configSection, AssemblyFinder assemblyFinder, ConfigurationReaderOptions options)
+          : base(new ResolutionContext(assemblyFinder, configuration, configSection, options.AdditionalMethods, options.OnExtensionMethodNotFound, typeof(TConfig)), configuration, assemblyFinder, configSection)
       {
       }
 
-      public void AddServices(TConfig builder, string? sectionName, bool getChildren, MethodFilterFactory? methodFilterFactory)
+      public void AddServices(TConfig builder, string? sectionName, bool getChildren, ConfigurationReaderOptions options)
       {
          var builderDirective = string.IsNullOrEmpty(sectionName) ? ConfigurationSection : ConfigurationSection.GetSection(sectionName);
          if (!getChildren || builderDirective.GetChildren().Any())
@@ -26,7 +27,7 @@ namespace ConfigurationProcessor.Core.Implementation
             ResolutionContext.CallConfigurationMethods(
                typeof(TConfig),
                methodCalls,
-               methodFilterFactory,
+               options.MethodFilterFactory,
                (arguments, methodInfo) =>
                {
                   if (methodInfo.IsStatic)
