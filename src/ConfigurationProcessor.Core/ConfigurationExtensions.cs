@@ -43,41 +43,71 @@ namespace ConfigurationProcessor.Core
             throw new ArgumentNullException(nameof(configuration));
          }
 
+         configuration.ProcessConfiguration(
+             context,
+             options =>
+             {
+                options.ConfigSection = configSection;
+                options.MethodFilterFactory = methodFilterFactory;
+                options.AdditionalMethods = additionalMethods;
+                options.ContextPaths = contextPaths;
+             });
+         return context;
+      }
+
+      /// <summary>
+      /// Processes the configuration.
+      /// </summary>
+      /// <typeparam name="TContext">The object type that is transformed by the configuration.</typeparam>
+      /// <param name="configuration">The configuration object.</param>
+      /// <param name="context">The object that is processed by the configuration.</param>
+      /// <param name="configureOptions">The configuration reader options builder.</param>
+      /// <returns>The <paramref name="context"/> object for chaining.</returns>
+      /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration"/> is null.</exception>
+      public static TContext ProcessConfiguration<TContext>(
+          this IConfiguration configuration,
+          TContext context,
+          Action<ConfigurationReaderOptions> configureOptions)
+          where TContext : class
+      {
+         if (configuration == null)
+         {
+            throw new ArgumentNullException(nameof(configuration));
+         }
+
          context.AddFromConfiguration(
              configuration,
-             configuration.GetSection(configSection),
-             contextPaths ?? new string?[] { string.Empty },
-             methodFilterFactory,
-             additionalMethods ?? Array.Empty<MethodInfo>(),
-             AssemblyFinder.Auto());
+             AssemblyFinder.Auto(),
+             configureOptions);
          return context;
       }
 
       internal static TConfig AddFromConfiguration<TConfig>(
           this TConfig builder,
           IConfiguration rootConfiguration,
-          IConfigurationSection configurationSection,
-          string?[] servicePaths,
-          MethodFilterFactory? methodFilterFactory,
-          MethodInfo[] additionalMethods,
-          AssemblyFinder assemblyFinder)
+          AssemblyFinder assemblyFinder,
+          Action<ConfigurationReaderOptions> configureOptions)
           where TConfig : class
       {
-         var reader = new ConfigurationReader<TConfig>(rootConfiguration, configurationSection, assemblyFinder, additionalMethods);
+         var options = new ConfigurationReaderOptions();
+         configureOptions?.Invoke(options);
+         var configurationSection = rootConfiguration.GetSection(options.ConfigSection);
 
-         foreach (var servicePath in servicePaths)
+         var reader = new ConfigurationReader<TConfig>(rootConfiguration, configurationSection, assemblyFinder, options);
+
+         foreach (var servicePath in options.ContextPaths ?? new string?[] { string.Empty })
          {
             if (string.IsNullOrEmpty(servicePath))
             {
-               reader.AddServices(builder, null, true, methodFilterFactory);
+               reader.AddServices(builder, null, true, options);
             }
             else if (servicePath![0] == '^')
             {
-               reader.AddServices(builder, servicePath.Substring(1), false, methodFilterFactory);
+               reader.AddServices(builder, servicePath.Substring(1), false, options);
             }
             else
             {
-               reader.AddServices(builder, servicePath, true, methodFilterFactory);
+               reader.AddServices(builder, servicePath, true, options);
             }
          }
 

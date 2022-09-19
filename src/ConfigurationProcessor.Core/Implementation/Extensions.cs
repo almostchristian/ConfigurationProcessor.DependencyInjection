@@ -114,28 +114,42 @@ namespace ConfigurationProcessor.Core.Implementation
             {
                if (!configurationMethods.Any())
                {
-                  var allExtensionMethods = resolutionContext
+                  configurationMethods = resolutionContext
                      .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, null, null)
-                     .Select(x => x.Name).Distinct();
-
-                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\" for type '{extensionArgumentType}'. Extension method names for type are:{Environment.NewLine}{string.Join(Environment.NewLine, allExtensionMethods)}");
+                     .Distinct();
                }
-               else
-               {
-                  var methodsByName = configurationMethods
-                      .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
-                      .ToList();
 
-                  throw new MissingMethodException($"Unable to find methods called \"{string.Join(", ", candidateNames)}\" for type '{extensionArgumentType}' "
-                  + (suppliedArgumentNames.Any()
-                      ? "for supplied named arguments: " + string.Join(", ", suppliedArgumentNames)
-                      : "with no supplied arguments")
-                  + ". Candidate methods are:"
-                  + Environment.NewLine
-                  + string.Join(Environment.NewLine, methodsByName));
+               var errorEventArgs = new ExtensionMethodNotFoundEventArgs(
+                  configurationMethods,
+                  candidateNames,
+                  extensionArgumentType,
+                  paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
+
+               resolutionContext.OnExtensionMethodNotFound(errorEventArgs);
+
+               if (!errorEventArgs.Handled)
+               {
+                  ThrowMissingMethodException(errorEventArgs);
                }
             }
          }
+      }
+
+      private static void ThrowMissingMethodException(ExtensionMethodNotFoundEventArgs args)
+      {
+         string message;
+         var methods = args.CandidateMethods
+                   .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
+                   .ToList();
+         message = $"Unable to find methods called \"{string.Join(", ", args.CandidateNames)}\" for type '{args.ExtensionMethodType}' "
+               + (args.SuppliedArguments.Any()
+                   ? "for supplied named arguments: " + string.Join(", ", args.SuppliedArguments.Keys)
+                   : "with no supplied arguments")
+               + ". Candidate methods are:"
+               + Environment.NewLine
+               + string.Join(Environment.NewLine, methods);
+
+         throw new MissingMethodException(message);
       }
 
       private static List<MethodInfo> FindConfigurationExtensionMethods(
@@ -335,7 +349,7 @@ namespace ConfigurationProcessor.Core.Implementation
          {
             var methodExpressions = new List<Expression>();
 
-            var childResolutionContext = new ResolutionContext(resolutionContext.AssemblyFinder, resolutionContext.RootConfiguration, sourceConfigurationSection, resolutionContext.AdditionalMethods, argumentType);
+            var childResolutionContext = new ResolutionContext(resolutionContext.AssemblyFinder, resolutionContext.RootConfiguration, sourceConfigurationSection, resolutionContext.AdditionalMethods, resolutionContext.OnExtensionMethodNotFound, argumentType);
 
             var keysToExclude = new List<string> { originalKey };
             if (int.TryParse(sourceConfigurationSection.Key, out _))

@@ -71,6 +71,26 @@ namespace Microsoft.Extensions.DependencyInjection
           string[]? servicePaths,
           MethodFilterFactory? methodFilterFactory,
           MethodInfo[]? additionalMethods = null)
+         => services.AddFromConfiguration(configuration, options =>
+         {
+            options.ConfigSection = servicesSection;
+            options.ContextPaths = servicePaths;
+            options.MethodFilterFactory = methodFilterFactory;
+            options.AdditionalMethods = additionalMethods;
+         });
+
+      /// <summary>
+      /// Adds services from configuration.
+      /// </summary>
+      /// <param name="services">The service collection.</param>
+      /// <param name="configuration">The configuration to read from.</param>
+      /// <param name="configureOptions">The config options.</param>
+      /// <returns>The service collection for chaining.</returns>
+      /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration"/> is null.</exception>
+      public static IServiceCollection AddFromConfiguration(
+          this IServiceCollection services,
+          IConfiguration configuration,
+          Action<ConfigurationReaderOptions> configureOptions)
       {
          if (configuration == null)
          {
@@ -79,10 +99,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
          return configuration.ProcessConfiguration(
              services,
-             servicesSection,
-             servicePaths,
-             methodFilterFactory,
-             additionalMethods);
+             configureOptions);
       }
    }
 }
