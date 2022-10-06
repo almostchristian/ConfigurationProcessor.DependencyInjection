@@ -573,11 +573,13 @@ namespace ConfigurationProcessor.Core.Implementation
          if (selectedMethods?.Count() > 1)
          {
             // if no best match was found, use the one with a similar number of arguments based on the argument list
-            selectedMethods = selectedMethods.Where(m =>
-            {
-               var requiredParamCount = m.GetParameters().Count(x => !x.IsOptional);
-               return requiredParamCount <= suppliedArgumentNames.Count() + (m.IsStatic ? 1 : 0);
-            });
+            selectedMethods = selectedMethods
+               .Where(m =>
+               {
+                  var requiredParamCount = m.GetParameters().Count(x => !x.IsOptional);
+                  return requiredParamCount <= suppliedArgumentNames.Count() + (m.IsStatic ? 1 : 0);
+               })
+               .ToList();
 
             if (selectedMethods.Count() > 1)
             {
@@ -585,7 +587,7 @@ namespace ConfigurationProcessor.Core.Implementation
             }
             else
             {
-               selectedMethod = selectedMethods.SingleOrDefault();
+               selectedMethod = selectedMethods.SingleOrDefault() ?? candidateMethods.SingleOrDefault(m => !m.GetParameters().Skip(1).Any());
             }
          }
          else
