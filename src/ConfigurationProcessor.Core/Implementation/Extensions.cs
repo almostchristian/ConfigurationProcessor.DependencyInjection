@@ -61,6 +61,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
                       if (isCollection)
                       {
+#pragma warning disable CA1031 // Do not catch general exception types
                          try
                          {
 #pragma warning disable S1481 // Unused local variables should be removed
@@ -71,6 +72,7 @@ namespace ConfigurationProcessor.Core.Implementation
                          {
                             return false;
                          }
+#pragma warning restore CA1031 // Do not catch general exception types
                       }
 
                       return isCollection;
