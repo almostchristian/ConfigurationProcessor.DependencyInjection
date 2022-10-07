@@ -5,7 +5,7 @@
    </PropertyGroup>
 
    <PropertyGroup>
-      <Version>1.2.1</Version>
+      <Version>1.3.0</Version>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
       <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
@@ -23,6 +23,9 @@
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
       <PackageReleaseNotes>
+v1.3.0
+   - Add support for disambiguating overloads with different array types.
+   - Prefer overloads with the most matching parameters
 v1.2.1
    - Fix MissingMethodException when there exists a candidate method with no parameters is not chosen correctly.
 v1.2.0

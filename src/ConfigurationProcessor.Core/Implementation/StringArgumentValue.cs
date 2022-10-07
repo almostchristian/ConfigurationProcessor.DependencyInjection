@@ -73,6 +73,11 @@ namespace ConfigurationProcessor.Core.Implementation
             return convertor(argumentValue, resolutionContext);
          }
 
+         if (toType == typeof(TimeSpan) && decimal.TryParse(section.Value, out _))
+         {
+            throw new FormatException("Invalid conversion from numeric to TimeSpan. Only strings are allowed.");
+         }
+
          if ((toTypeInfo.IsInterface || toTypeInfo.IsAbstract || typeof(Delegate).IsAssignableFrom(toType) || typeof(MethodInfo) == toType) && !string.IsNullOrWhiteSpace(argumentValue))
          {
             // check if value looks like a static property or field directive

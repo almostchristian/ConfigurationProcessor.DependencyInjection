@@ -3,6 +3,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -56,7 +57,23 @@ namespace ConfigurationProcessor.Core.Implementation
                       }
 
                       var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
-                      return paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
+                      var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
+
+                      if (isCollection)
+                      {
+                         try
+                         {
+#pragma warning disable S1481 // Unused local variables should be removed
+                            var collection = GetCollection(m);
+#pragma warning restore S1481 // Unused local variables should be removed
+                         }
+                         catch
+                         {
+                            return false;
+                         }
+                      }
+
+                      return isCollection;
                    })
                    .SingleOrDefault($"Ambiguous match while searching for a method that accepts a list or array.");
             }
@@ -91,13 +108,18 @@ namespace ConfigurationProcessor.Core.Implementation
                }
             }
 
+            IEnumerable? GetCollection(MethodInfo method)
+            {
+               var argValue = new ObjectArgumentValue(configSection!);
+               var collectionType = method.GetParameters().ElementAt(1).ParameterType;
+               return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
+            }
+
             if (configurationMethod != null)
             {
                if (isCollection)
                {
-                  var argValue = new ObjectArgumentValue(configSection);
-                  var collectionType = configurationMethod.GetParameters().ElementAt(1).ParameterType;
-                  var collection = argValue.ConvertTo(configurationMethod, collectionType, resolutionContext);
+                  var collection = GetCollection(configurationMethod);
                   invoker(new List<object> { collection! }, configurationMethod);
                }
                else
@@ -583,7 +605,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
             if (selectedMethods.Count() > 1)
             {
-               selectedMethod = selectedMethods.OrderBy(m => m.IsStatic ? 1 : 0).FirstOrDefault();
+               selectedMethod = selectedMethods.OrderBy(m => m.IsStatic ? 1 : 0).ThenByDescending(m => m.GetParameters().Length).FirstOrDefault();
             }
             else
             {

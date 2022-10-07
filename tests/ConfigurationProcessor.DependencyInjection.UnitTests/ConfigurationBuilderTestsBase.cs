@@ -392,6 +392,24 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
+      public void WithObjectNotation_MapIntArrayDirectlyWithOverload_RegistersService()
+      {
+         var json = @$"
+{{
+   'DummyArray': [
+      1,
+      2
+   ]
+}}";
+
+         var serviceCollection = ProcessJson(json);
+
+         Assert.Collection(
+             serviceCollection,
+             sd => Assert.Equal(typeof(int[]), sd.ServiceType));
+      }
+
+      [Fact]
       public void WithObjectNotation_MapStringArrayUsingArrayNotationWithSingleStringOverloadUsingArrayWithMultipleElements_RegistersWithArrayOverload()
       {
          var json = @$"
@@ -638,6 +656,24 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
                 Assert.Equal("hello", config.Name);
                 Assert.NotNull(config.Value);
                 Assert.Equal(new TimeSpan(13, 0, 10), config.Value.Time);
+             });
+      }
+
+      [Fact]
+      public void WithObjectNotation_ComplexObjectWithoutParametersOverloads_InstantiatesObject()
+      {
+         var json = @$"
+{{
+   'ComplexObject': true
+}}";
+
+         var serviceCollection = ProcessJson(json);
+
+         Assert.Collection(
+             serviceCollection,
+             sd =>
+             {
+                Assert.Equal(typeof(ComplexObject), sd.ServiceType);
              });
       }
 

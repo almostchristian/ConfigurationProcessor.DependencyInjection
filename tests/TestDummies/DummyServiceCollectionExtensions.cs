@@ -146,6 +146,18 @@ namespace TestDummies
          return services;
       }
 
+      public static IServiceCollection AddDummyArray(this IServiceCollection services, params int[] types)
+      {
+         services.AddSingleton(types);
+         return services;
+      }
+
+      public static IServiceCollection AddDummyArray(this IServiceCollection services, params TimeSpan[] types)
+      {
+         services.AddSingleton(types);
+         return services;
+      }
+
       public static IServiceCollection AddDummyString(this IServiceCollection services, string value)
       {
          services.AddSingleton(new SimpleValue<string>(value));
@@ -155,6 +167,12 @@ namespace TestDummies
       public static IServiceCollection AddDummyString(this IServiceCollection services, params string[] values)
       {
          services.AddSingleton(values);
+         return services;
+      }
+
+      public static IServiceCollection AddComplexObject(this IServiceCollection services)
+      {
+         services.AddSingleton(new ComplexObject());
          return services;
       }
 
