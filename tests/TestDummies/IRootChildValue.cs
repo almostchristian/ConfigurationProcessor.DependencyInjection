@@ -2,15 +2,12 @@
 // Copyright (c) Integrated Health Information Systems Pte Ltd. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
-using System;
-
 namespace TestDummies
 {
-   public interface IChildValue : IRootChildValue
+   public interface IRootChildValue
    {
-      Type ContextType { get; set; }
-      Uri Location { get; set; }
-      Delegate OnError { get; set; }
-      TimeSpan? Time { get; set; }
+      string Child { get; set; }
+
+      void Reset();
    }
 }

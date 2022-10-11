@@ -113,7 +113,7 @@ namespace ConfigurationProcessor.Core.Implementation
             IEnumerable? GetCollection(MethodInfo method)
             {
                var argValue = new ObjectArgumentValue(configSection!);
-               var collectionType = method.GetParameters().ElementAt(1).ParameterType;
+               var collectionType = method.GetParameters().ElementAt(method.IsStatic ? 1 : 0).ParameterType;
                return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
             }
 
@@ -185,15 +185,16 @@ namespace ConfigurationProcessor.Core.Implementation
           MethodFilter? filter)
       {
          IReadOnlyCollection<Assembly> configurationAssemblies = resolutionContext.ConfigurationAssemblies;
-
+         var interfaces = configType.GetInterfaces();
          var candidateMethods = configurationAssemblies
              .SelectMany(a => SafeGetExportedTypes(a)
                  .Select(t => t.GetTypeInfo())
                  .Where(t => t.IsSealed && t.IsAbstract && !t.IsNested))
              .Union(new[] { configType.GetTypeInfo() })
+             .Concat(interfaces.Select(t => t.GetTypeInfo()))
              .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
              .Where(m => filter == null || filter(m, key))
-             .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || m.DeclaringType == configType))
+             .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || m.DeclaringType == configType || interfaces.Contains(m.DeclaringType)))
              .Where(m => !m.IsStatic || SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType.IsAssignableFrom(configType) == true) // If static method, checks that the first parameter is same as the extension type
              .ToList();
 
