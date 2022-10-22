@@ -5,7 +5,7 @@
    </PropertyGroup>
 
    <PropertyGroup>
-      <Version>1.4.0</Version>
+      <Version>1.5.0</Version>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
       <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
@@ -23,6 +23,9 @@
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
       <PackageReleaseNotes>
+v1.5.0
+   - Improve selection of single parameter overload method.
+   - Improve binding to readonly properties
 v1.4.0
    - Improve discovery of executable methods to include implemented interfaces
 v1.3.0

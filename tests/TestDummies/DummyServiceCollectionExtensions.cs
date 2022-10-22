@@ -91,6 +91,17 @@ namespace TestDummies
          return services;
       }
 
+      public static IServiceCollection AddSimpleDelegate(this IServiceCollection services)
+      {
+         services.AddSingleton(new SimpleValue<object>(new object()));
+         return services;
+      }
+      public static IServiceCollection AddSimpleType(this IServiceCollection services)
+      {
+         services.AddSingleton(new SimpleValue<object>(new object()));
+         return services;
+      }
+
       public static IServiceCollection AddSimpleType(this IServiceCollection services, Type value)
       {
          services.AddSingleton(new SimpleValue<Type>(value));

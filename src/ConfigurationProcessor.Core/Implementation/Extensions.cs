@@ -81,7 +81,50 @@ namespace ConfigurationProcessor.Core.Implementation
             }
             else
             {
-               configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames);
+               // for single property, choose the best configuration method by attempting to convert the parameter value
+               if (suppliedArgumentNames.Count == 1 && string.IsNullOrEmpty(suppliedArgumentNames.Single()) && configSection.Value != null)
+               {
+                  var argvalue = configSection.Value;
+                  configurationMethod = configurationMethods
+                     .Where(m =>
+                     {
+                        var parameters = m.GetParameters();
+                        System.Diagnostics.Debug.WriteLine(parameters.Count(p => !p.HasDefaultValue));
+                        if (parameters.Count(p => !p.HasDefaultValue) != (m.IsStatic ? 2 : 1))
+                        {
+                           return false;
+                        }
+
+                        var paramType = m.GetParameters().ElementAt(m.IsStatic ? 1 : 0).ParameterType;
+                        var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
+                        if (isCollection)
+                        {
+                           return false;
+                        }
+
+#pragma warning disable CA1031 // Do not catch general exception types
+                        try
+                        {
+                           var argValue = new StringArgumentValue(configSection, argvalue);
+                           argValue.ConvertTo(m, paramType, resolutionContext);
+
+                           return true;
+                        }
+                        catch
+                        {
+                           return false;
+                        }
+#pragma warning restore CA1031 // Do not catch general exception types
+                     })
+                     .SingleOrDefault($"Ambiguous match while searching for a method that accepts a single value.") ??
+
+                     // if no match found, choose the parameterless overload
+                     configurationMethods.SingleOrDefault(m => m.GetParameters().Count(p => !p.HasDefaultValue) == (m.IsStatic ? 1 : 0));
+               }
+               else
+               {
+                  configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames);
+               }
 
                if (configurationMethod == null)
                {
@@ -139,7 +182,7 @@ namespace ConfigurationProcessor.Core.Implementation
                if (!configurationMethods.Any())
                {
                   configurationMethods = resolutionContext
-                     .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, null, null)
+                     .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, null, methodFilter)
                      .Distinct();
                }
 
@@ -424,9 +467,7 @@ namespace ConfigurationProcessor.Core.Implementation
          if (!parameter.HasImplicitValueWhenNotSpecified())
          {
             var parameterInstance = Activator.CreateInstance(parameter.ParameterType);
-
-            sourceConfigurationSection.Bind(parameterInstance);
-
+            BindMappableValues(resolutionContext, parameterInstance, parameter.ParameterType, configurationMethod, sourceConfigurationSection!, originalKey);
             return parameterInstance;
          }
 

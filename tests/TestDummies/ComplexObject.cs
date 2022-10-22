@@ -30,6 +30,8 @@ namespace TestDummies
       {
          public TimeSpan? Time { get; set; }
 
+         public TimeSpan? Time2 { set => Time = value; }
+
          public Uri Location { get; set; }
 
          public Type ContextType { get; set; }

@@ -34,6 +34,21 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
+      public void WithObjectNotation_UsingConfigureMethod_SetsReadOnlyProperty()
+      {
+         var json = $@"
+{{
+   'Configure<{NameOf<SimpleObject>()}>' : {{
+      'PropertyB2': 'hello'
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetRequiredService<IOptions<SimpleObject>>();
+         Assert.Equal("hello", option.Value.PropertyB);
+      }
+
+      [Fact]
       public void WithArrayNotation_AddMultipleServicesUsingObjectStringMix_RegistersServices()
       {
          var json = @$"
@@ -558,21 +573,6 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void WithObjectNotation_MapToOverloadedExtensionMethodWithNoParameters_RegistersCorrectOverload()
-      {
-         var json = @$"
-{{
-   'SimpleValue': true
-}}";
-
-         var serviceCollection = ProcessJson(json);
-
-         Assert.Collection(
-             serviceCollection,
-             sd => Assert.Equal(typeof(SimpleValue<object>), sd.ServiceType));
-      }
-
-      [Fact]
       public void WithObjectNotation_MapToExtensionMethodWithSingleDelegateParameterDirectly_RegistersService()
       {
          var json = @$"
@@ -585,6 +585,24 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Collection(
              serviceCollection,
              sd => Assert.Equal(typeof(SimpleValue<Delegate>), sd.ServiceType));
+      }
+
+      [Theory]
+      [InlineData("SimpleType")]
+      [InlineData("SimpleDelegate")]
+      [InlineData("SimpleValue")]
+      public void WithObjectNotation_MapToExtensionMethodWithNoParameter_RegistersService(string extensionName)
+      {
+         var json = @$"
+{{
+   '{extensionName}': true
+}}";
+
+         var serviceCollection = ProcessJson(json);
+
+         Assert.Collection(
+             serviceCollection,
+             sd => Assert.Equal(typeof(SimpleValue<object>), sd.ServiceType));
       }
 
       [Fact]
@@ -602,8 +620,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              sd => Assert.Equal(typeof(SimpleValue<Type>), sd.ServiceType));
       }
 
-      [Fact]
-      public void WithArrayNotation_MapToExtensionMethodAcceptingComplexObject_InstantiatesObjectAndBindsValues()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithArrayNotation_MapToExtensionMethodAcceptingComplexObject_InstantiatesObjectAndBindsValues(string timeProperty)
       {
          var json = @$"
 [{{
@@ -611,7 +631,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
    'Parameter': {{
       'Name': 'hello',
       'Value': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}]";
@@ -630,20 +650,21 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              });
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingComplexObjectViaParameterName_InstantiatesObjectAndBindsValues()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithArrayNotation_MapToExtensionMethodAcceptingComplexObject_SetsWriteOnlyProperty(string timeProperty)
       {
          var json = @$"
-{{
-   'ComplexObject': {{
-      'Parameter': {{
-            'Name': 'hello',
-            'Value': {{
-               'Time' : '13:00:10'
-            }}
+[{{
+   'Name': 'AddComplexObject',
+   'Parameter': {{
+      'Name': 'hello',
+      'Value': {{
+            '{timeProperty}' : '13:00:10'
       }}
    }}
-}}";
+}}]";
 
          var serviceCollection = ProcessJson(json);
 
@@ -677,15 +698,17 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              });
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingComplexObjectDirectly_InstantiatesObjectAndBindsValues()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingComplexObjectDirectly_InstantiatesObjectAndBindsValues(string timeProperty)
       {
          var json = @$"
 {{
    'ComplexObject': {{
       'Name': 'hello',
       'Value': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -704,8 +727,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              });
       }
 
-      [Fact]
-      public void WithArrayNotation_MapToExtensionMethodAcceptingComplexObjectListViaParameterName_InstantiatesObjectAndBindsValues()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithArrayNotation_MapToExtensionMethodAcceptingComplexObjectListViaParameterName_InstantiatesObjectAndBindsValues(string timeProperty)
       {
          var json = @$"
 [{{
@@ -713,12 +738,12 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
    'Parameters': [{{
       'Name': 'hello',
       'Value': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }},{{
       'Name': 'hi',
       'Value': {{
-            'Time' : '02:00:33'
+            '{timeProperty}' : '02:00:33'
       }}
    }}]
 }}]";
@@ -749,20 +774,22 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              });
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingComplexObjectListDirectly_InstantiatesObjectAndBindsValues()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingComplexObjectListDirectly_InstantiatesObjectAndBindsValues(string timeProperty)
       {
          var json = @$"
 {{
    'ComplexObjects': [{{
       'Name': 'hello',
       'Value': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }},{{
       'Name': 'hi',
       'Value': {{
-            'Time' : '02:00:33'
+            '{timeProperty}' : '02:00:33'
       }}
    }}]
 }}";
@@ -859,15 +886,17 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
              });
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegate_GeneratesConfigurationActionBasedOnObject()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegate_GeneratesConfigurationActionBasedOnObject(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'Name': 'hello',
       'Value': {{
-         'Time' : '13:00:10',
+         '{timeProperty}' : '13:00:10',
          'Location': 'http://www.google.com',
          'ContextType': '{NameOf<SimpleObject>()}',
          'OnError': '{NameOf<ConfigurationBuilderTestsBase>()}::{nameof(DummyDelegateField)}'
@@ -886,8 +915,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(DummyDelegateField, option.Value.Value.OnError);
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateConfigureChildWithNullValues_GeneratedChildObjectHasDefaultMembers()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateConfigureChildWithNullValues_GeneratedChildObjectHasDefaultMembers(string timeProperty)
       {
          var json = @$"
 {{
@@ -895,7 +926,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       'Name': 'hello',
       'Value': {{
          'Child': null,
-         'Time': null,
+         '{timeProperty}': null,
          'Location': null,
          'ContextType': null,
          'OnError': null,
@@ -916,8 +947,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Null(childValue.OnError);
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateConfigureChildWithEmptyStringValues_GeneratedChildObjectHasDefaultMembers()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegateConfigureChildWithEmptyStringValues_GeneratedChildObjectHasDefaultMembers(string timeProperty)
       {
          var json = @$"
 {{
@@ -925,7 +958,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       'Name': 'hello',
       'Value': {{
          'Child': '',
-         'Time': '',
+         '{timeProperty}': '',
          'Location': '',
          'ContextType': '',
          'OnError': '',
@@ -960,8 +993,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.NotNull(option.Value);
       }
 
-      [Fact]
-      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegate_CanCallExtensionMethodsForConfigurationObjectWithObjectNotation()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegate_CanCallExtensionMethodsForConfigurationObjectWithObjectNotation(string timeProperty)
       {
          var json = @$"
 {{
@@ -970,7 +1005,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
             'Name': 'hello'
       }},
       'ConfigureValue': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1019,14 +1054,16 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal("hello", option.Value.Name);
       }
 
-      [Fact]
-      public void ConfigurationActionWithInterfaceExtensionMethods()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void ConfigurationActionWithInterfaceExtensionMethods(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'ConfigureByInterfaceValue': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1039,14 +1076,16 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
       }
 
-      [Fact]
-      public void ConfigurationActionInterfaceWithInterfaceExtensionMethods()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void ConfigurationActionInterfaceWithInterfaceExtensionMethods(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationActionInterface': {{
       'ConfigureByInterfaceValue': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1059,14 +1098,16 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Time);
       }
 
-      [Fact]
-      public void ConfigurationActionInterfaceWithInterfaceExtensionMethodsForBaseInterface()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void ConfigurationActionInterfaceWithInterfaceExtensionMethodsForBaseInterface(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationActionInterface': {{
       'ConfigureByInterfaceValueBaseInterface': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1079,14 +1120,16 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Time);
       }
 
-      [Fact]
-      public void ConfigurationActionWithInterfaceExtensionMethodsForBaseInterface()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void ConfigurationActionWithInterfaceExtensionMethodsForBaseInterface(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'ConfigureByInterfaceValueBaseInterface': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1099,8 +1142,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
       }
 
-      [Fact]
-      public void ConfigurationActionWithExtensionForInterfaceMethods()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void ConfigurationActionWithExtensionForInterfaceMethods(string timeProperty)
       {
          var json = @$"
 {{
@@ -1109,7 +1154,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
             'Name': 'hello'
       }},
       'ConfigureByInterfaceValue': {{
-            'Time' : '13:00:10'
+            '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1122,15 +1167,17 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
       }
 
-      [Fact]
-      public void ConfigurationActionWithGenericExtensionForInterfaceMethods()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void ConfigurationActionWithGenericExtensionForInterfaceMethods(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'ConfigureByInterfaceName<!hello>': true,
       'ConfigureByInterfaceValue': {{
-          'Time' : '13:00:10'
+          '{timeProperty}' : '13:00:10'
       }}
    }}
 }}";
@@ -1143,15 +1190,17 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
       }
 
-      [Fact]
-      public void WithObjectNotation_CallMethodOnConfigurationObject_ExecutesMethod()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_CallMethodOnConfigurationObject_ExecutesMethod(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'Value': {{
          'Child': 'helloworld',
-         'Time': '00:22:00',
+         '{timeProperty}': '00:22:00',
       }},
       'Reset': true
    }}
@@ -1165,15 +1214,17 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Null(option.Value.Value.Time);
       }
 
-      [Fact]
-      public void WithObjectNotation_CallMethodOnConfigurationChildObject_ExecutesMethod()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_CallMethodOnConfigurationChildObject_ExecutesMethod(string timeProperty)
       {
          var json = @$"
 {{
    'ConfigurationAction': {{
       'Value': {{
          'Child': 'helloworld',
-         'Time': '00:22:00',
+         '{timeProperty}': '00:22:00',
          'Reset': true
       }}
    }}
@@ -1187,8 +1238,10 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Null(option.Value.Value.Child);
       }
 
-      [Fact]
-      public void WithObjectNotation_CallExtensionMethodOnConfigurationChildObject_ExecutesMethod()
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_CallExtensionMethodOnConfigurationChildObject_ExecutesMethod(string timeProperty)
       {
          var json = @$"
 {{
@@ -1196,7 +1249,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       'Value': {{
          'Child': 'helloworld',
          'Location': 'www.google.com',
-         'Time': '00:22:00',
+         '{timeProperty}': '00:22:00',
          'Reset2': true
       }}
    }}

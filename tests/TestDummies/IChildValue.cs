@@ -12,5 +12,6 @@ namespace TestDummies
       Uri Location { get; set; }
       Delegate OnError { get; set; }
       TimeSpan? Time { get; set; }
+      TimeSpan? Time2 { set; }
    }
 }

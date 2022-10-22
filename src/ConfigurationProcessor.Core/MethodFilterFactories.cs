@@ -24,7 +24,7 @@ namespace ConfigurationProcessor.Core
       /// <returns>The method filter and candidate names.</returns>
       public static (MethodFilter Filter, IEnumerable<string> CandidateNames) DefaultMethodFilterFactory(string name)
       {
-         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { name, $"Add{name}" };
+         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { name, $"Add{name}", $"set_{name}" };
          return (DefaultMethodFilter, candidates);
       }
 
@@ -43,7 +43,7 @@ namespace ConfigurationProcessor.Core
       /// <param name="methodNameSuffixes">The method name suffixes to search for.</param>
       /// <returns>The method filter factory.</returns>
       public static MethodFilterFactory WithSuffixes(MethodFilter methodFilter, params string[] methodNameSuffixes)
-         => WithPrefixAndSuffixes(methodFilter, new[] { "Add" }, methodNameSuffixes);
+         => WithPrefixAndSuffixes(methodFilter, new[] { "Add", "set_" }, methodNameSuffixes);
 
       /// <summary>
       /// Creates a method filter factory with prefixes and suffixes.

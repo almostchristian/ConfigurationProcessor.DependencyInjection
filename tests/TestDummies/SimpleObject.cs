@@ -10,6 +10,8 @@ namespace TestDummies
 
       public string PropertyB { get; set; }
 
+      public string PropertyB2 { set => PropertyB = value; }
+
       public bool PropertyC { get; set; } = true;
    }
 }
