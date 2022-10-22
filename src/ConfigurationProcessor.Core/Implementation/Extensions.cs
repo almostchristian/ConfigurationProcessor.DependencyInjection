@@ -169,12 +169,20 @@ namespace ConfigurationProcessor.Core.Implementation
                }
                else
                {
-                  var call = (from p in configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0)
-                              let directive = paramArgs.FirstOrDefault<KeyValuePair<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>>(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key))
-                              select directive.Key == null
-                                  ? resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, methodName)
-                                  : directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)).ToList<object>();
-                  invoker(call, configurationMethod);
+                  var parameters = configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0).ToArray();
+                  List<object> args = new List<object>();
+
+                  for (int i = 0; i < parameters.Length; i++)
+                  {
+                     var p = parameters[i];
+                     var directive = paramArgs.FirstOrDefault(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key));
+                     var arg = (directive.Key == null || (string.IsNullOrEmpty(directive.Key) && i > 0)) ?
+                        resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, methodName)! :
+                        directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)!;
+                     args.Add(arg);
+                  }
+
+                  invoker(args, configurationMethod);
                }
             }
             else

@@ -61,7 +61,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection AddSimpleInt32(this IServiceCollection services, int value)
+      public static IServiceCollection AddSimpleInt32(this IServiceCollection services, int value, bool rev = false)
       {
          services.AddSingleton(new SimpleValue<int>(value));
          return services;
