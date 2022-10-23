@@ -25,28 +25,119 @@ namespace ConfigurationProcessor.Core.Implementation
       private const char GenericTypeMarker = '`';
       private const char GenericTypeParameterSeparator = '|';
 
-      public static void CallConfigurationMethods(
-          this ResolutionContext resolutionContext,
-          Type extensionArgumentType,
-          ILookup<string, ConfigLookup> methods,
-          MethodFilterFactory? methodFilterFactory,
-          Action<List<object>, MethodInfo> invoker)
+      public static void CallConfigurationMethod(
+         this ResolutionContext resolutionContext,
+         Type extensionArgumentType,
+         string methodName,
+         IConfigurationSection configSection,
+         MethodFilterFactory? methodFilterFactory,
+         TypeResolver[] typeArgs,
+         Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>? paramArgs,
+         Func<List<object>>? argumentFactory,
+         Action<List<object>, MethodInfo> invoker)
       {
-         foreach (var (methodName, (typeArgs, configSection, configArgs)) in methods.SelectMany(g => g.Select(x => (MethodName: g.Key, Config: x))))
+         methodFilterFactory ??= MethodFilterFactories.DefaultMethodFilterFactory;
+
+         var (methodFilter, candidateNames) = methodFilterFactory(methodName);
+         IEnumerable<MethodInfo> configurationMethods = resolutionContext
+            .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, candidateNames, methodFilter);
+         configurationMethods = configurationMethods.Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, methodName))).ToList();
+
+         var suppliedArgumentNames = paramArgs?.Keys.ToArray() ?? Array.Empty<string>();
+
+         var isCollection = suppliedArgumentNames.IsArray();
+         MethodInfo? configurationMethod;
+
+         var args = argumentFactory?.Invoke();
+
+         if (isCollection)
          {
-            var paramArgs = configArgs;
-            methodFilterFactory ??= MethodFilterFactories.DefaultMethodFilterFactory;
+            configurationMethod = configurationMethods
+                .Where(m =>
+                {
+                   var parameters = m.GetParameters();
+                   if (parameters.Length != (m.IsStatic ? 2 : 1))
+                   {
+                      return false;
+                   }
 
-            var (methodFilter, candidateNames) = methodFilterFactory(methodName);
-            IEnumerable<MethodInfo> configurationMethods = resolutionContext
-               .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, candidateNames, methodFilter);
-            configurationMethods = configurationMethods.Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, methodName))).ToList();
-            var suppliedArgumentNames = paramArgs.Keys;
+                   var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
+                   var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
 
-            var isCollection = suppliedArgumentNames.IsArray();
-            MethodInfo? configurationMethod;
-            if (isCollection)
+                   if (isCollection)
+                   {
+#pragma warning disable CA1031 // Do not catch general exception types
+                      try
+                      {
+#pragma warning disable S1481 // Unused local variables should be removed
+                         var collection = GetCollection(resolutionContext, configSection!, m);
+#pragma warning restore S1481 // Unused local variables should be removed
+                      }
+                      catch
+                      {
+                         return false;
+                      }
+#pragma warning restore CA1031 // Do not catch general exception types
+                   }
+
+                   return isCollection;
+                })
+                .SingleOrDefault($"Ambiguous match while searching for a method that accepts a list or array.");
+         }
+         else
+         {
+            // for single property, choose the best configuration method by attempting to convert the parameter value
+            if (suppliedArgumentNames.Length == 1 && string.IsNullOrEmpty(suppliedArgumentNames.Single()) && configSection.Value != null)
             {
+               var argvalue = configSection.Value;
+               configurationMethod = configurationMethods
+                  .Where(m =>
+                  {
+                     var parameters = m.GetParameters();
+                     System.Diagnostics.Debug.WriteLine(parameters.Count(p => !p.HasDefaultValue));
+                     if (parameters.Count(p => !p.HasDefaultValue && !p.HasImplicitValueWhenNotSpecified()) != (m.IsStatic ? 2 : 1))
+                     {
+                        return false;
+                     }
+
+                     var paramType = m.GetParameters().Where(p => !p.HasImplicitValueWhenNotSpecified()).ElementAt(m.IsStatic ? 1 : 0).ParameterType;
+                     var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
+                     if (isCollection)
+                     {
+                        return false;
+                     }
+
+#pragma warning disable CA1031 // Do not catch general exception types
+                     try
+                     {
+                        var argValue = new StringArgumentValue(configSection, argvalue);
+                        argValue.ConvertTo(m, paramType, resolutionContext);
+
+                        return true;
+                     }
+                     catch
+                     {
+                        return false;
+                     }
+#pragma warning restore CA1031 // Do not catch general exception types
+                  })
+                  .SingleOrDefault($"Ambiguous match while searching for a method that accepts a single value.") ??
+
+                  // if no match found, choose the parameterless overload
+                  configurationMethods.SingleOrDefault(m => m.GetParameters().Count(p => !p.HasDefaultValue) == (m.IsStatic ? 1 : 0));
+            }
+            else if (args != null)
+            {
+               configurationMethod = configurationMethods.SelectConfigurationMethod(args.Select(a => a.GetType()));
+            }
+            else
+            {
+               configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames);
+            }
+
+            if (configurationMethod == null)
+            {
+               // if the method could still not be found, look method that accepts a single dictionary
                configurationMethod = configurationMethods
                    .Where(m =>
                    {
@@ -57,157 +148,104 @@ namespace ConfigurationProcessor.Core.Implementation
                       }
 
                       var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
-                      var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
-
-                      if (isCollection)
-                      {
-#pragma warning disable CA1031 // Do not catch general exception types
-                         try
-                         {
-#pragma warning disable S1481 // Unused local variables should be removed
-                            var collection = GetCollection(m);
-#pragma warning restore S1481 // Unused local variables should be removed
-                         }
-                         catch
-                         {
-                            return false;
-                         }
-#pragma warning restore CA1031 // Do not catch general exception types
-                      }
-
-                      return isCollection;
+                      return paramType.IsGenericType && typeof(Dictionary<,>) == paramType.GetGenericTypeDefinition();
                    })
-                   .SingleOrDefault($"Ambiguous match while searching for a method that accepts a list or array.");
-            }
-            else
-            {
-               // for single property, choose the best configuration method by attempting to convert the parameter value
-               if (suppliedArgumentNames.Count == 1 && string.IsNullOrEmpty(suppliedArgumentNames.Single()) && configSection.Value != null)
+                   .SingleOrDefault($"Ambigous match while searching for a method that accepts Dictionary<,>.");
+
+               if (configurationMethod != null)
                {
-                  var argvalue = configSection.Value;
-                  configurationMethod = configurationMethods
-                     .Where(m =>
-                     {
-                        var parameters = m.GetParameters();
-                        System.Diagnostics.Debug.WriteLine(parameters.Count(p => !p.HasDefaultValue));
-                        if (parameters.Count(p => !p.HasDefaultValue) != (m.IsStatic ? 2 : 1))
-                        {
-                           return false;
-                        }
-
-                        var paramType = m.GetParameters().ElementAt(m.IsStatic ? 1 : 0).ParameterType;
-                        var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
-                        if (isCollection)
-                        {
-                           return false;
-                        }
-
-#pragma warning disable CA1031 // Do not catch general exception types
-                        try
-                        {
-                           var argValue = new StringArgumentValue(configSection, argvalue);
-                           argValue.ConvertTo(m, paramType, resolutionContext);
-
-                           return true;
-                        }
-                        catch
-                        {
-                           return false;
-                        }
-#pragma warning restore CA1031 // Do not catch general exception types
-                     })
-                     .SingleOrDefault($"Ambiguous match while searching for a method that accepts a single value.") ??
-
-                     // if no match found, choose the parameterless overload
-                     configurationMethods.SingleOrDefault(m => m.GetParameters().Count(p => !p.HasDefaultValue) == (m.IsStatic ? 1 : 0));
-               }
-               else
-               {
-                  configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames);
-               }
-
-               if (configurationMethod == null)
-               {
-                  // if the method could still not be found, look method that accepts a single dictionary
-                  configurationMethod = configurationMethods
-                      .Where(m =>
-                      {
-                         var parameters = m.GetParameters();
-                         if (parameters.Length != (m.IsStatic ? 2 : 1))
-                         {
-                            return false;
-                         }
-
-                         var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
-                         return paramType.IsGenericType && typeof(Dictionary<,>) == paramType.GetGenericTypeDefinition();
-                      })
-                      .SingleOrDefault($"Ambigous match while searching for a method that accepts Dictionary<,>.");
-
-                  if (configurationMethod != null)
-                  {
-                     paramArgs = new Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>
+                  paramArgs = new Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>
                      {
                         { string.Empty, (new ObjectArgumentValue(configSection), configSection) },
                      };
-                  }
-               }
-            }
-
-            IEnumerable? GetCollection(MethodInfo method)
-            {
-               var argValue = new ObjectArgumentValue(configSection!);
-               var collectionType = method.GetParameters().ElementAt(method.IsStatic ? 1 : 0).ParameterType;
-               return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
-            }
-
-            if (configurationMethod != null)
-            {
-               if (isCollection)
-               {
-                  var collection = GetCollection(configurationMethod);
-                  invoker(new List<object> { collection! }, configurationMethod);
-               }
-               else
-               {
-                  var parameters = configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0).ToArray();
-                  List<object> args = new List<object>();
-
-                  for (int i = 0; i < parameters.Length; i++)
-                  {
-                     var p = parameters[i];
-                     var directive = paramArgs.FirstOrDefault(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key));
-                     var arg = (directive.Key == null || (string.IsNullOrEmpty(directive.Key) && i > 0)) ?
-                        resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, methodName)! :
-                        directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)!;
-                     args.Add(arg);
-                  }
-
-                  invoker(args, configurationMethod);
-               }
-            }
-            else
-            {
-               if (!configurationMethods.Any())
-               {
-                  configurationMethods = resolutionContext
-                     .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, null, methodFilter)
-                     .Distinct();
-               }
-
-               var errorEventArgs = new ExtensionMethodNotFoundEventArgs(
-                  configurationMethods,
-                  candidateNames,
-                  extensionArgumentType,
-                  paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
-
-               resolutionContext.OnExtensionMethodNotFound(errorEventArgs);
-
-               if (!errorEventArgs.Handled)
-               {
-                  ThrowMissingMethodException(errorEventArgs);
                }
             }
          }
+
+         if (configurationMethod != null)
+         {
+            if (argumentFactory != null && args != null)
+            {
+               invoker(args, configurationMethod);
+            }
+            else if (isCollection)
+            {
+               var collection = GetCollection(resolutionContext, configSection!, configurationMethod);
+               invoker(new List<object> { collection! }, configurationMethod);
+            }
+            else
+            {
+               var parameters = configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0).ToArray();
+               args = new List<object>();
+
+               for (int i = 0; i < parameters.Length; i++)
+               {
+                  var p = parameters[i];
+                  var directive = paramArgs.FirstOrDefault(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key));
+                  var arg = (directive.Key == null || (string.IsNullOrEmpty(directive.Key) && i > 0)) ?
+                     resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, methodName)! :
+                     directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)!;
+                  args.Add(arg);
+               }
+
+               invoker(args, configurationMethod);
+            }
+         }
+         else
+         {
+            if (!configurationMethods.Any())
+            {
+               configurationMethods = resolutionContext
+                  .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, null, methodFilter)
+                  .Distinct();
+            }
+
+            var errorEventArgs = new ExtensionMethodNotFoundEventArgs(
+               configurationMethods,
+               candidateNames,
+               extensionArgumentType,
+               paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
+
+            resolutionContext.OnExtensionMethodNotFound(errorEventArgs);
+
+            if (!errorEventArgs.Handled)
+            {
+               ThrowMissingMethodException(errorEventArgs);
+            }
+         }
+      }
+
+      public static void CallConfigurationMethods(
+          this ResolutionContext resolutionContext,
+          Type extensionArgumentType,
+          IConfigurationSection directive,
+          bool getChildren,
+          IEnumerable<string>? exclude,
+          MethodFilterFactory? methodFilterFactory,
+          Action<List<object>, MethodInfo> invoker)
+      {
+         var methods = resolutionContext.GetMethodCalls(directive, getChildren, exclude);
+         foreach (var (methodName, (typeArgs, configSection, configArgs)) in methods.SelectMany(g => g.Select(x => (MethodName: g.Key, Config: x))))
+         {
+            var paramArgs = configArgs;
+            CallConfigurationMethod(
+               resolutionContext,
+               extensionArgumentType,
+               methodName,
+               configSection,
+               methodFilterFactory,
+               typeArgs,
+               paramArgs,
+               null,
+               invoker);
+         }
+      }
+
+      private static IEnumerable? GetCollection(ResolutionContext resolutionContext, IConfigurationSection configSection, MethodInfo method)
+      {
+         var argValue = new ObjectArgumentValue(configSection);
+         var collectionType = method.GetParameters().ElementAt(method.IsStatic ? 1 : 0).ParameterType;
+         return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
       }
 
       private static void ThrowMissingMethodException(ExtensionMethodNotFoundEventArgs args)
@@ -391,11 +429,11 @@ namespace ConfigurationProcessor.Core.Implementation
 
          var excludeKeys = new HashSet<string>(properties.Select(x => x.Name).Union(excludedKeys), StringComparer.OrdinalIgnoreCase);
 
-         var methodCalls = resolutionContext.GetMethodCalls(sourceConfigurationSection, true, excludeKeys);
-
          resolutionContext.CallConfigurationMethods(
             targetType,
-            methodCalls,
+            sourceConfigurationSection,
+            true,
+            excludeKeys,
             null,
             (arguments, methodInfo) =>
             {
@@ -497,6 +535,10 @@ namespace ConfigurationProcessor.Core.Implementation
          else if (parameter.ParameterType == typeof(IConfigurationSection))
          {
             return sourceConfigurationSection;
+         }
+         else if (parameter.ParameterType == typeof(IConfigurationProcessor))
+         {
+            return new ConfigurationHelperImplementation(resolutionContext, sourceConfigurationSection!, null);
          }
 
          return parameter.DefaultValue;
@@ -613,6 +655,23 @@ namespace ConfigurationProcessor.Core.Implementation
          {
             return result;
          }
+      }
+
+      private static MethodInfo? SelectConfigurationMethod(
+          this IEnumerable<MethodInfo> candidateMethods,
+          IEnumerable<Type> suppliedArgumentTypes)
+      {
+         return candidateMethods
+            .FirstOrDefault(m =>
+            {
+               IEnumerable<ParameterInfo> parameters = m.GetParameters();
+               if (m.IsStatic)
+               {
+                  parameters = parameters.Skip(1);
+               }
+
+               return parameters.Select(x => x.ParameterType).SequenceEqual(suppliedArgumentTypes);
+            });
       }
 
       private static MethodInfo? SelectConfigurationMethod(
@@ -752,7 +811,8 @@ namespace ConfigurationProcessor.Core.Implementation
 
             // parameters of type IConfiguration are implicitly populated with provided Configuration
             || paramInfo.ParameterType == typeof(IConfiguration)
-            || paramInfo.ParameterType == typeof(IConfigurationSection);
+            || paramInfo.ParameterType == typeof(IConfigurationSection)
+            || paramInfo.ParameterType == typeof(IConfigurationProcessor);
       }
 
       private static bool IsConfigurationOptionsBuilder(this ParameterInfo paramInfo, [NotNullWhen(true)] out Type? argumentType)

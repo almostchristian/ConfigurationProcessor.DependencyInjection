@@ -23,10 +23,11 @@ namespace ConfigurationProcessor.Core.Implementation
          var builderDirective = string.IsNullOrEmpty(sectionName) ? ConfigurationSection : ConfigurationSection.GetSection(sectionName);
          if (!getChildren || builderDirective.GetChildren().Any())
          {
-            var methodCalls = ResolutionContext.GetMethodCalls(builderDirective, getChildren);
             ResolutionContext.CallConfigurationMethods(
                typeof(TConfig),
-               methodCalls,
+               builderDirective,
+               getChildren,
+               null,
                options.MethodFilterFactory,
                (arguments, methodInfo) =>
                {

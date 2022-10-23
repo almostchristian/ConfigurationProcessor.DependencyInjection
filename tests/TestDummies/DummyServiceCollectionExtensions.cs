@@ -2,6 +2,7 @@
 // Copyright (c) Integrated Health Information Systems Pte Ltd. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
+using ConfigurationProcessor;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -274,6 +275,18 @@ namespace TestDummies
       public static void Append<T>(this ComplexObject obj, string value)
       {
          obj.Name += value;
+      }
+
+      public static IServiceCollection AddWithHelper(this IServiceCollection services, string text, IConfigurationProcessor helper)
+      {
+         services.AddConfigurationAction(c => helper.Invoke(c, "AddConfigureName", text));
+         return services;
+      }
+
+      public static IServiceCollection AddWithHelper(this IServiceCollection services, Action<ComplexObject.ChildValue> configure, IConfigurationProcessor helper)
+      {
+         services.AddConfigurationAction(c => helper.Invoke(c, "AddConfigureValue", configure));
+         return services;
       }
    }
 }

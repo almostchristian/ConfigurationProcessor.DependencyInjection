@@ -1283,6 +1283,42 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal("helloworld2314", option.Value.Name);
       }
 
+      [Fact]
+      public void WithObjectNotation_UsingHelper_CallsDynamicAddConfigureName()
+      {
+         var randomValue = Guid.NewGuid().ToString();
+         var json = @$"
+{{
+   'WithHelper': '{randomValue}'
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Equal(randomValue, option.Value.Name);
+      }
+
+      [Theory]
+      [InlineData("Time")]
+      [InlineData("Time2")]
+      public void WithObjectNotation_UsingHelperWithComplexOptions_CallsDynamicAddConfigureName(string timeProperty)
+      {
+         var randomValue = Guid.NewGuid().ToString();
+         var json = @$"
+{{
+   'WithHelper': {{
+      '{timeProperty}' : '13:00:10'
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+
+         Assert.NotNull(option);
+         Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
+      }
+
       private IServiceProvider BuildFromJson(string json)
       {
          var serviceCollection = ProcessJson(json);

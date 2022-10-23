@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ConfigurationProcessor.Core\ConfigurationProcessor.Core.csproj" />
+  </ItemGroup>
+
 </Project>
