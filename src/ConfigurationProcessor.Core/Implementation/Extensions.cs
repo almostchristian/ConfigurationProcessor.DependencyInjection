@@ -128,7 +128,7 @@ namespace ConfigurationProcessor.Core.Implementation
             }
             else if (args != null)
             {
-               configurationMethod = configurationMethods.SelectConfigurationMethod(args.Select(a => a.GetType()));
+               configurationMethod = configurationMethods.SelectConfigurationMethod(args.Select(a => a.GetType()).ToArray());
             }
             else
             {
@@ -204,7 +204,7 @@ namespace ConfigurationProcessor.Core.Implementation
                configurationMethods,
                candidateNames,
                extensionArgumentType,
-               paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
+               paramArgs?.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
 
             resolutionContext.OnExtensionMethodNotFound(errorEventArgs);
 
@@ -254,13 +254,24 @@ namespace ConfigurationProcessor.Core.Implementation
          var methods = args.CandidateMethods
                    .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Skip(1).Select(p => p.Name))})")
                    .ToList();
-         message = $"Unable to find methods called \"{string.Join(", ", args.CandidateNames)}\" for type '{args.ExtensionMethodType}' "
-               + (args.SuppliedArguments.Any()
-                   ? "for supplied named arguments: " + string.Join(", ", args.SuppliedArguments.Keys)
-                   : "with no supplied arguments")
-               + ". Candidate methods are:"
-               + Environment.NewLine
-               + string.Join(Environment.NewLine, methods);
+
+         if (args.SuppliedArguments != null)
+         {
+            message = $"Unable to find methods called \"{string.Join(", ", args.CandidateNames)}\" for type '{args.ExtensionMethodType}' "
+                  + (args.SuppliedArguments.Any()
+                      ? "for supplied named arguments: " + string.Join(", ", args.SuppliedArguments.Keys)
+                      : "with no supplied arguments")
+                  + ". Candidate methods are:"
+                  + Environment.NewLine
+                  + string.Join(Environment.NewLine, methods);
+         }
+         else
+         {
+            message = $"Unable to find methods called \"{string.Join(", ", args.CandidateNames)}\" for type '{args.ExtensionMethodType}' "
+                  + ". Candidate methods are:"
+                  + Environment.NewLine
+                  + string.Join(Environment.NewLine, methods);
+         }
 
          throw new MissingMethodException(message);
       }
@@ -659,18 +670,28 @@ namespace ConfigurationProcessor.Core.Implementation
 
       private static MethodInfo? SelectConfigurationMethod(
           this IEnumerable<MethodInfo> candidateMethods,
-          IEnumerable<Type> suppliedArgumentTypes)
+          Type[] suppliedArgumentTypes)
       {
          return candidateMethods
+            .OrderByDescending(m => m.GetParameters().Length)
             .FirstOrDefault(m =>
             {
-               IEnumerable<ParameterInfo> parameters = m.GetParameters();
+               Span<ParameterInfo> parameters = m.GetParameters();
                if (m.IsStatic)
                {
-                  parameters = parameters.Skip(1);
+                  parameters = parameters.Slice(1);
                }
 
-               return parameters.Select(x => x.ParameterType).SequenceEqual(suppliedArgumentTypes);
+               for (int i = 0; i < parameters.Length; i++)
+               {
+                  var parameter = parameters[i];
+                  if (!parameter.IsOptional && parameter.ParameterType != suppliedArgumentTypes.ElementAtOrDefault(i))
+                  {
+                     return false;
+                  }
+               }
+
+               return true;
             });
       }
 

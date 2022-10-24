@@ -38,12 +38,15 @@ namespace ConfigurationProcessor.Core.Implementation
                if (methodInfo.IsStatic)
                {
                   arguments.Insert(0, instance);
-                  methodInfo.Invoke(null, arguments.ToArray());
                }
-               else
+
+               var paramCount = methodInfo.GetParameters().Length;
+               for (int i = arguments.Count; i < paramCount; i++)
                {
-                  methodInfo.Invoke(instance, arguments.ToArray());
+                  arguments.Add(null!);
                }
+
+               methodInfo.Invoke(instance, arguments.ToArray());
             });
       }
    }

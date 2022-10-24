@@ -226,7 +226,7 @@ namespace TestDummies
          return services;
       }
 
-      public static void AddConfigureName(this ComplexObject configuration, string name)
+      public static void AddConfigureName(this ComplexObject configuration, string name, bool randomParam = true)
       {
          configuration.Name = name;
       }

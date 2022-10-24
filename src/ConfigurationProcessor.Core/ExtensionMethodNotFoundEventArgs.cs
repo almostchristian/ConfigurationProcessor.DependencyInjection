@@ -18,7 +18,7 @@ namespace ConfigurationProcessor.Core
          IEnumerable<MethodInfo> candidateMethods,
          IEnumerable<string> candidateNames,
          Type extensionMethodType,
-         IReadOnlyDictionary<string, IConfigurationSection> suppliedArguments)
+         IReadOnlyDictionary<string, IConfigurationSection>? suppliedArguments)
       {
          CandidateMethods = candidateMethods;
          CandidateNames = candidateNames;
@@ -44,7 +44,7 @@ namespace ConfigurationProcessor.Core
       /// <summary>
       /// Gets the supplied argument names.
       /// </summary>
-      public IReadOnlyDictionary<string, IConfigurationSection> SuppliedArguments { get; }
+      public IReadOnlyDictionary<string, IConfigurationSection>? SuppliedArguments { get; }
 
       /// <summary>
       /// Gets or sets if the event is handled. If true, an exception will not be thrown.
