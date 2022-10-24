@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -36,6 +37,11 @@ namespace ConfigurationProcessor.Core.Implementation
          if (toType.IsArray)
          {
             return CreateArray();
+         }
+
+         if (toType.IsConfigurationOptionsBuilder(out var argumentType))
+         {
+            return resolutionContext.GenerateLambda(configurationMethod, section, argumentType, null);
          }
 
          if (IsContainer(toType, out var elementType) && TryCreateContainer(out var result))

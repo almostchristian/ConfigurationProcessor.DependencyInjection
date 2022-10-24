@@ -22,6 +22,8 @@ namespace ConfigurationProcessor.Core.Implementation
          this.options = options;
       }
 
+      public IConfiguration RootConfiguration => resolutionContext.RootConfiguration;
+
       public void Invoke<T>(T instance, string methodName, params object[] arguments)
          where T : class
       {

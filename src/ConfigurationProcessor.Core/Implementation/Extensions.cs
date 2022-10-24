@@ -41,7 +41,10 @@ namespace ConfigurationProcessor.Core.Implementation
          var (methodFilter, candidateNames) = methodFilterFactory(methodName);
          IEnumerable<MethodInfo> configurationMethods = resolutionContext
             .FindConfigurationExtensionMethods(methodName, extensionArgumentType, typeArgs, candidateNames, methodFilter);
-         configurationMethods = configurationMethods.Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, methodName))).ToList();
+         configurationMethods = configurationMethods
+            .Union(resolutionContext.AdditionalMethods.Where(m => candidateNames.Contains(m.Name) && methodFilter(m, methodName)))
+            .Union(extensionArgumentType.GetMethods().Where(m => candidateNames.Contains(m.Name) && methodFilter(m, methodName)))
+            .ToList();
 
          var suppliedArgumentNames = paramArgs?.Keys.ToArray() ?? Array.Empty<string>();
 
@@ -461,12 +464,12 @@ namespace ConfigurationProcessor.Core.Implementation
             });
       }
 
-      private static Delegate GenerateLambda(
+      internal static Delegate GenerateLambda(
          this ResolutionContext resolutionContext,
          MethodInfo configurationMethod,
          IConfigurationSection? sourceConfigurationSection,
          Type argumentType,
-         string originalKey)
+         string? originalKey)
       {
          var typeParameter = Expression.Parameter(argumentType);
          Expression bodyExpression;
@@ -476,7 +479,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
             var childResolutionContext = new ResolutionContext(resolutionContext.AssemblyFinder, resolutionContext.RootConfiguration, sourceConfigurationSection, resolutionContext.AdditionalMethods, resolutionContext.OnExtensionMethodNotFound, argumentType);
 
-            var keysToExclude = new List<string> { originalKey };
+            var keysToExclude = originalKey != null ? new List<string> { originalKey } : new List<string>();
             if (int.TryParse(sourceConfigurationSection.Key, out _))
             {
                // integer key indicates that this is from an array
@@ -839,7 +842,7 @@ namespace ConfigurationProcessor.Core.Implementation
       private static bool IsConfigurationOptionsBuilder(this ParameterInfo paramInfo, [NotNullWhen(true)] out Type? argumentType)
          => IsConfigurationOptionsBuilder(paramInfo.ParameterType, out argumentType);
 
-      private static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
+      internal static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
       {
          if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Action<>))
          {

@@ -2,9 +2,7 @@
 // Copyright (c) almostchristian. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor
 {
@@ -13,6 +11,11 @@ namespace ConfigurationProcessor
    /// </summary>
    public interface IConfigurationProcessor
    {
+      /// <summary>
+      /// Gets the root <see cref="IConfiguration"/> object.
+      /// </summary>
+      IConfiguration RootConfiguration { get; }
+
       /// <summary>
       /// Invokes a specificed configuration method with specificed arguments. Method is chosen based on the argument types.
       /// </summary>

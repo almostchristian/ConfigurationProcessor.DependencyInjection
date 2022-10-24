@@ -37,7 +37,15 @@ namespace ConfigurationProcessor.Core.Implementation
 
          if (toType == typeof(string))
          {
-            return providedValue;
+            if (providedValue.StartsWith("$") && providedValue.EndsWith("$"))
+            {
+               var key = providedValue.Substring(1, providedValue.Length - 2);
+               return resolutionContext.RootConfiguration.GetValue<string>(key);
+            }
+            else
+            {
+               return providedValue;
+            }
          }
 
          if (string.IsNullOrEmpty(argumentValue))
