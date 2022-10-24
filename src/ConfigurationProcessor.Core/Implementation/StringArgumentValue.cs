@@ -37,7 +37,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
          if (toType == typeof(string))
          {
-            if (providedValue.StartsWith("$") && providedValue.EndsWith("$"))
+            if (providedValue.StartsWith("$", StringComparison.OrdinalIgnoreCase) && providedValue.EndsWith("$", StringComparison.OrdinalIgnoreCase))
             {
                var key = providedValue.Substring(1, providedValue.Length - 2);
                return resolutionContext.RootConfiguration.GetValue<string>(key);
