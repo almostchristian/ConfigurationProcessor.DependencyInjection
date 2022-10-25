@@ -288,5 +288,15 @@ namespace TestDummies
          services.AddConfigurationAction(c => helper.Invoke(c, "AddConfigureValue", configure));
          return services;
       }
+
+      public static IServiceCollection AddDbConnection(this IServiceCollection services, string connectionString)
+      {
+         return services.Configure<DbConnection>(conn => conn.ConnectionString = connectionString);
+      }
+
+      public static IServiceCollection ConfigureDbConnection(this IServiceCollection services, Action<DbConnection> configure)
+      {
+         return services.Configure(configure);
+      }
    }
 }

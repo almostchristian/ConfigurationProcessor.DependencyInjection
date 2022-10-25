@@ -16,7 +16,7 @@ namespace ConfigurationProcessor.Core.Implementation
    {
       private readonly IConfigurationSection section;
       private readonly string providedValue;
-
+      private readonly string originalKey;
       private static readonly Regex StaticMemberAccessorRegex = new Regex("^(?<shortTypeName>[^:]+)::(?<memberName>[A-Za-z][A-Za-z0-9]*)(?<typeNameExtraQualifiers>[^:]*)$");
 
       private static readonly Dictionary<Type, Func<string, ResolutionContext, object>> ExtendedTypeConversions = new Dictionary<Type, Func<string, ResolutionContext, object>>
@@ -25,22 +25,22 @@ namespace ConfigurationProcessor.Core.Implementation
             { typeof(Assembly), (s, c) => c.FindAssembly(s)! },
         };
 
-      public StringArgumentValue(IConfigurationSection section, string providedValue)
+      public StringArgumentValue(IConfigurationSection section, string providedValue, string originalKey)
       {
          this.section = section;
          this.providedValue = providedValue ?? throw new ArgumentNullException(nameof(providedValue));
+         this.originalKey = originalKey;
       }
 
-      public object? ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext)
+      public object? ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext, string? providedKey = null)
       {
          var argumentValue = Environment.ExpandEnvironmentVariables(providedValue);
 
          if (toType == typeof(string))
          {
-            if (providedValue.StartsWith("$", StringComparison.Ordinal) && providedValue.EndsWith("$", StringComparison.Ordinal))
+            if ("ConnectionString".Equals(providedKey ?? originalKey, StringComparison.OrdinalIgnoreCase))
             {
-               var key = providedValue.Substring(1, providedValue.Length - 2);
-               return resolutionContext.RootConfiguration.GetValue<string>(key);
+               return resolutionContext.RootConfiguration.GetConnectionString(providedValue) ?? providedValue;
             }
             else
             {

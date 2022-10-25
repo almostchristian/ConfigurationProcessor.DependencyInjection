@@ -14,7 +14,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
    {
       protected override IServiceCollection ProcessJson(string json)
       {
-         var fullJson = string.Format("{{ 'TestApp': {{ 'Services': {0} }} }}", json);
+         var fullJson = "{ 'ConnectionStrings' : { 'Conn1': 'abcd', 'Conn2': 'efgh' }, 'TestApp': { 'Services': "+ json + " } }";
          var serviceCollection = new ServiceCollection();
          var configuration = new ConfigurationBuilder().AddJsonString(fullJson).Build();
          serviceCollection.AddFromConfiguration(

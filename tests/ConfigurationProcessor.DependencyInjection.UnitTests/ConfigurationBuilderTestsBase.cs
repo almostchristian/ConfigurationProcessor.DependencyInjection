@@ -1319,6 +1319,46 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(new TimeSpan(13, 0, 10), option.Value.Value.Time);
       }
 
+      [Theory]
+      [InlineData("DbConnection", "Conn1", "abcd")]
+      [InlineData("DbConnection", "Conn2", "efgh")]
+      [InlineData("ConfigureDbConnection", "Conn1", "abcd")]
+      [InlineData("ConfigureDbConnection", "Conn2", "efgh")]
+      public void WithObjectNotation_GivenConnectionString_SetsConnectionStringValue(string method, string connectionStringName, string expectedConnectionStringValue)
+      {
+         var randomValue = Guid.NewGuid().ToString();
+         var json = @$"
+{{
+   '{method}': {{
+      'ConnectionString' : '{connectionStringName}'
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<DbConnection>>();
+
+         Assert.NotNull(option);
+         Assert.Equal(expectedConnectionStringValue, option.Value.ConnectionString);
+      }
+
+      [Theory]
+      [InlineData("Conn1", "abcd")]
+      [InlineData("Conn2", "efgh")]
+      public void WithSimpleValue_GivenConnectionString_SetsConnectionStringValue(string connectionStringName, string expectedConnectionStringValue)
+      {
+         var randomValue = Guid.NewGuid().ToString();
+         var json = @$"
+{{
+   'DbConnection': '{connectionStringName}'
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<DbConnection>>();
+
+         Assert.NotNull(option);
+         Assert.Equal(expectedConnectionStringValue, option.Value.ConnectionString);
+      }
+
       private IServiceProvider BuildFromJson(string json)
       {
          var serviceCollection = ProcessJson(json);

@@ -103,7 +103,8 @@ namespace ConfigurationProcessor.Core.Implementation
                         return false;
                      }
 
-                     var paramType = m.GetParameters().Where(p => !p.HasImplicitValueWhenNotSpecified()).ElementAt(m.IsStatic ? 1 : 0).ParameterType;
+                     var parameter = m.GetParameters().Where(p => !p.HasImplicitValueWhenNotSpecified()).ElementAt(m.IsStatic ? 1 : 0);
+                     var paramType = parameter.ParameterType;
                      var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
                      if (isCollection)
                      {
@@ -113,7 +114,7 @@ namespace ConfigurationProcessor.Core.Implementation
 #pragma warning disable CA1031 // Do not catch general exception types
                      try
                      {
-                        var argValue = new StringArgumentValue(configSection, argvalue);
+                        var argValue = new StringArgumentValue(configSection, argvalue, parameter.Name);
                         argValue.ConvertTo(m, paramType, resolutionContext);
 
                         return true;
@@ -187,7 +188,7 @@ namespace ConfigurationProcessor.Core.Implementation
                   var directive = paramArgs.FirstOrDefault(s => string.IsNullOrEmpty(s.Key) || ParameterNameMatches(p.Name!, s.Key));
                   var arg = (directive.Key == null || (string.IsNullOrEmpty(directive.Key) && i > 0)) ?
                      resolutionContext.GetImplicitValueForNotSpecifiedKey(p, configurationMethod, paramArgs.FirstOrDefault().Value.ConfigSection, methodName)! :
-                     directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext)!;
+                     directive.Value.ArgName.ConvertTo(configurationMethod, p.ParameterType, resolutionContext, p.Name)!;
                   args.Add(arg);
                }
 
@@ -771,7 +772,7 @@ namespace ConfigurationProcessor.Core.Implementation
       {
          return new Dictionary<string, (IConfigurationArgumentValue, IConfigurationSection)>
                 {
-                    { string.Empty, (new StringArgumentValue(section, section.Value), section) },
+                    { string.Empty, (new StringArgumentValue(section, section.Value, section.Key), section) },
                 };
       }
 
@@ -807,7 +808,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
          if (argumentSection.Value != null)
          {
-            argumentValue = new StringArgumentValue(argumentSection, argumentSection.Value);
+            argumentValue = new StringArgumentValue(argumentSection, argumentSection.Value, argumentSection.Key);
          }
          else
          {

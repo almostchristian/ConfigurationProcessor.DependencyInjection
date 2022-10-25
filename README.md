@@ -225,5 +225,28 @@ Given the configuration below:
 
 The order of the methods executed will be `ConfigureA`, `ConfigureB` and then `ConfigureZ`;
 
+### ConnectionString handling
+Parameters or properties that are named 'ConnectionString' are given special handling where the value will come from an element from `ConnectionStrings` section with the same key if it exists.
+
+Given the configuration below:
+```json
+{
+   "ConnectionStrings": {
+      "Default": "abcd"
+   },
+   "Services": {
+      "DbConnection": {
+         "ConnectionString" : "Default"
+      }
+   }
+}
+```
+
+```csharp
+public stastic IServiceCollection AddDbConnection(this IServiceCollection services, string connectionString)
+```
+
+The configuration above is equivalent to calling `services.AddDbConnection("abcd");`
+
 ## Credits
 [`Serilog.Settings.Configuration`](https://github.com/serilog/serilog-settings-configuration/) which is the basis for this project.

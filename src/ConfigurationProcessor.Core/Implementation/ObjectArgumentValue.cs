@@ -21,7 +21,7 @@ namespace ConfigurationProcessor.Core.Implementation
          this.section = section ?? throw new ArgumentNullException(nameof(section));
       }
 
-      public object ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext)
+      public object ConvertTo(MethodInfo configurationMethod, Type toType, ResolutionContext resolutionContext, string? providedKey = null)
       {
          // return the entire section for internal processing
          if (toType == typeof(IConfigurationSection))
@@ -94,7 +94,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
                for (int i = 0; i < configurationElements.Length; ++i)
                {
-                  var keyValue = new StringArgumentValue(configurationElements[i], configurationElements[i].Key);
+                  var keyValue = new StringArgumentValue(configurationElements[i], configurationElements[i].Key, string.Empty);
                   var argumentValue = configurationElements[i].GetArgumentValue(resolutionContext);
                   var key = keyValue.ConvertTo(configurationMethod, keyType, resolutionContext);
                   var value = argumentValue.ConvertTo(configurationMethod, valueType, resolutionContext);
