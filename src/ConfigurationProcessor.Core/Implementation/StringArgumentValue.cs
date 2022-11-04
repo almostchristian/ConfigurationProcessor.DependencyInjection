@@ -38,7 +38,8 @@ namespace ConfigurationProcessor.Core.Implementation
 
          if (toType == typeof(string))
          {
-            if ("ConnectionString".Equals(providedKey ?? originalKey, StringComparison.OrdinalIgnoreCase))
+            if ("ConnectionString".Equals(providedKey, StringComparison.OrdinalIgnoreCase) ||
+               "ConnectionString".Equals(originalKey, StringComparison.OrdinalIgnoreCase))
             {
                return resolutionContext.RootConfiguration.GetConnectionString(providedValue) ?? providedValue;
             }

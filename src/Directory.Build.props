@@ -5,7 +5,7 @@
    </PropertyGroup>
 
    <PropertyGroup>
-      <Version>1.7.1</Version>
+      <Version>1.7.2</Version>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
       <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
@@ -23,7 +23,7 @@
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
       <PackageReleaseNotes>
-v1.7.1
+v1.7.2
    - Added special handling for retrieving ConnectionStrings
    - Lambda parameters can now be in any position
 v1.6.1

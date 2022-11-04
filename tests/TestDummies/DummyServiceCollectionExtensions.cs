@@ -298,5 +298,10 @@ namespace TestDummies
       {
          return services.Configure(configure);
       }
+
+      public static void ConnectionString(this ComplexObject obj, string value)
+      {
+         obj.Name = value;
+      }
    }
 }

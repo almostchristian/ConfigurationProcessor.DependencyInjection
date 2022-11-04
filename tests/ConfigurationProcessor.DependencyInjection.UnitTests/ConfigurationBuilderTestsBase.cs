@@ -1359,6 +1359,24 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(expectedConnectionStringValue, option.Value.ConnectionString);
       }
 
+      [Theory]
+      [InlineData("Conn1", "abcd")]
+      [InlineData("Conn2", "efgh")]
+      public void WithObjectNotation_CallExtensionForConnectionString_SetsConnectionStringValue(string connectionStringName, string expectedConnectionStringValue)
+      {
+         // IConfiguration sorts the keys when calling GetChildren()
+         var json = @$"
+{{
+   'ConfigurationAction': {{
+      'ConnectionString': '{connectionStringName}'
+   }}
+}}";
+
+         var sp = BuildFromJson(json);
+         var option = sp.GetService<IOptions<ComplexObject>>();
+         Assert.Equal(expectedConnectionStringValue, option.Value.Name);
+      }
+
       private IServiceProvider BuildFromJson(string json)
       {
          var serviceCollection = ProcessJson(json);
