@@ -243,7 +243,7 @@ Given the configuration below:
 ```
 
 ```csharp
-public stastic IServiceCollection AddDbConnection(this IServiceCollection services, string connectionString)
+public static IServiceCollection AddDbConnection(this IServiceCollection services, string connectionString)
 ```
 
 The configuration above is equivalent to calling `services.AddDbConnection("abcd");`

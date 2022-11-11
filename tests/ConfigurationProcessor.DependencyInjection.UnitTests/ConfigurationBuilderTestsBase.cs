@@ -1377,6 +1377,49 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal(expectedConnectionStringValue, option.Value.Name);
       }
 
+      [Fact]
+      public void WithObjectNotiation_MultiParameterDelegate2_SetsValue()
+      {
+         var json = @"
+{
+   'MultiParameterDelegate2': {
+      'ConnectionString' : 'abc',
+      'ConfigureValue': {
+         'Time' : '13:00:10'
+      },
+      'MultiConfigure': 'def'
+   }
+}";
+         var sp = BuildFromJson(json);
+         var option1 = sp.GetService<IOptions<ComplexObject>>();
+         Assert.Equal("abcdef", option1.Value.Name);
+         Assert.Equal(new TimeSpan(13, 0, 10), option1.Value.Value.Time);
+         var option2 = sp.GetService<IOptions<DbConnection>>();
+         Assert.Equal("abcdef", option2.Value.ConnectionString);
+      }
+
+      [Fact]
+      public void WithObjectNotiation_MultiParameterDelegate3_SetsValue()
+      {
+         var json = @"
+{
+   'MultiParameterDelegate3': {
+      'ConnectionString' : 'abc',
+      'ConfigureValue': {
+         'Time' : '13:00:10'
+      },
+      'MultiConfigure': 'def',
+      'Reset2': true
+   }
+}";
+         var sp = BuildFromJson(json);
+         var option1 = sp.GetService<IOptions<ComplexObject>>();
+         Assert.Equal("abcdef", option1.Value.Name);
+         Assert.False(option1.Value.Value.Time.HasValue);
+         var option2 = sp.GetService<IOptions<DbConnection>>();
+         Assert.Equal("abcdef", option2.Value.ConnectionString);
+      }
+
       private IServiceProvider BuildFromJson(string json)
       {
          var serviceCollection = ProcessJson(json);

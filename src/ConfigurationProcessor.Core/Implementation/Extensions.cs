@@ -19,7 +19,7 @@ namespace ConfigurationProcessor.Core.Implementation
 {
    internal static class Extensions
    {
-      public static readonly MethodInfo BindMappableValuesMethod = ReflectionUtil.GetMethodInfo<object>(o => BindMappableValues(default!, default!, default!, default!, default!, default!));
+      public static readonly MethodInfo BindMappableValuesMethod = ReflectionUtil.GetMethodInfo<object>(o => BindMappableValues<object>(default!, default!, default!, default!, default!, default!)).MakeGenericMethod(typeof(object));
       private const string GenericTypePattern = "(?<typename>[a-zA-Z][a-zA-Z0-9\\.]+)<(?<genparam>.+)>";
       private static readonly Regex GenericTypeRegex = new Regex(GenericTypePattern, RegexOptions.Compiled);
       private const char GenericTypeMarker = '`';
@@ -423,9 +423,9 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static void BindMappableValues(
+      public static void BindMappableValues<T>(
           this ResolutionContext resolutionContext,
-          object target,
+          T target,
           Type targetType,
           MethodInfo configurationMethod,
           IConfigurationSection sourceConfigurationSection,
@@ -455,7 +455,7 @@ namespace ConfigurationProcessor.Core.Implementation
                if (methodInfo.IsStatic)
                {
                   var nargs = arguments.ToList();
-                  nargs.Insert(0, target);
+                  nargs.Insert(0, target!);
                   methodInfo.Invoke(null, nargs.ToArray());
                }
                else
@@ -472,45 +472,98 @@ namespace ConfigurationProcessor.Core.Implementation
          Type argumentType,
          string? originalKey)
       {
-         var typeParameter = Expression.Parameter(argumentType);
-         Expression bodyExpression;
-         if (sourceConfigurationSection?.Exists() == true)
+         if (argumentType.Name.StartsWith("Action`2", StringComparison.Ordinal))
          {
-            var methodExpressions = new List<Expression>();
-
-            var childResolutionContext = new ResolutionContext(resolutionContext.AssemblyFinder, resolutionContext.RootConfiguration, sourceConfigurationSection, resolutionContext.AdditionalMethods, resolutionContext.OnExtensionMethodNotFound, argumentType);
-
-            var keysToExclude = originalKey != null ? new List<string> { originalKey } : new List<string>();
-            if (int.TryParse(sourceConfigurationSection.Key, out _))
-            {
-               // integer key indicates that this is from an array
-               keysToExclude.Add("Name");
-            }
-
-            // we want to return a generic lambda that calls bind c => configuration.Bind(c)
-            Expression<Action<object>> bindExpression = c => sourceConfigurationSection.Bind(c);
-            var bindMethodExpression = (MethodCallExpression)bindExpression.Body;
-            methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], typeParameter));
-
-            methodExpressions.Add(
-               Expression.Call(
-                  BindMappableValuesMethod,
-                  Expression.Constant(childResolutionContext),
-                  typeParameter,
-                  Expression.Constant(argumentType),
-                  Expression.Constant(configurationMethod),
-                  Expression.Constant(sourceConfigurationSection),
-                  Expression.Constant(keysToExclude.ToArray())));
-
-            bodyExpression = Expression.Block(methodExpressions);
+            var genArgs = argumentType.GetGenericArguments();
+            var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(genArgs[0], true);
+            var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(genArgs[1], true);
+            var combinedArgType = typeof(ValueTuple<,>).MakeGenericType(genArgs);
+            var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2);
+            var bodyExpression3 = BuildExpression(combinedArg, combinedArgType, true);
+            var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3);
+            var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2).Compile();
+            return lambda;
+         }
+         else if (argumentType.Name.StartsWith("Action`3", StringComparison.Ordinal))
+         {
+            var genArgs = argumentType.GetGenericArguments();
+            var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(genArgs[0], true);
+            var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(genArgs[1], true);
+            var (parameterExpression3, bodyExpression3) = BuildExpressionWithParam(genArgs[2], true);
+            var combinedArgType = typeof(ValueTuple<,,>).MakeGenericType(genArgs);
+            var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2, parameterExpression3);
+            var bodyExpression4 = BuildExpression(combinedArg, combinedArgType, true);
+            var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3, bodyExpression4);
+            var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2, parameterExpression3).Compile();
+            return lambda;
          }
          else
          {
-            bodyExpression = Expression.Empty();
+            var (parameterExpression, bodyExpression) = BuildExpressionWithParam(argumentType);
+
+            var lambda = Expression.Lambda(typeof(Action<>).MakeGenericType(argumentType), bodyExpression, parameterExpression).Compile();
+            return lambda;
          }
 
-         var lambda = Expression.Lambda(typeof(Action<>).MakeGenericType(argumentType), bodyExpression, typeParameter).Compile();
-         return lambda;
+         (ParameterExpression, Expression) BuildExpressionWithParam(Type argumentType, bool handleMissing = false)
+         {
+            var parameterExpression = Expression.Parameter(argumentType);
+            return (parameterExpression, BuildExpression(parameterExpression, argumentType, handleMissing));
+         }
+
+         Expression BuildExpression(Expression parameterExpression, Type argumentType, bool handleMissing = false)
+         {
+            Expression bodyExpression;
+            if (sourceConfigurationSection?.Exists() == true)
+            {
+               var methodExpressions = new List<Expression>();
+
+               var childResolutionContext = new ResolutionContext(
+                  resolutionContext.AssemblyFinder,
+                  resolutionContext.RootConfiguration,
+                  sourceConfigurationSection,
+                  resolutionContext.AdditionalMethods,
+                  handleMissing ? e => e.Handled = true : resolutionContext.OnExtensionMethodNotFound,
+                  argumentType);
+
+               var keysToExclude = originalKey != null ? new List<string> { originalKey } : new List<string>();
+               if (int.TryParse(sourceConfigurationSection.Key, out _))
+               {
+                  // integer key indicates that this is from an array
+                  keysToExclude.Add("Name");
+               }
+
+               // we want to return a generic lambda that calls bind c => configuration.Bind(c)
+               if (!parameterExpression.Type.IsValueType)
+               {
+                  Expression<Action<object>> bindExpression = c => sourceConfigurationSection.Bind(c);
+                  var bindMethodExpression = (MethodCallExpression)bindExpression.Body;
+                  methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], parameterExpression));
+               }
+
+               var bindMethod = !parameterExpression.Type.IsValueType ?
+                  BindMappableValuesMethod :
+                  ReflectionUtil.GetGenericMethodInfo(() => BindMappableValues<object>(default!, default!, default!, default!, default!, default!)).MakeGenericMethod(parameterExpression.Type);
+
+               methodExpressions.Add(
+                  Expression.Call(
+                     bindMethod,
+                     Expression.Constant(childResolutionContext),
+                     parameterExpression,
+                     Expression.Constant(argumentType),
+                     Expression.Constant(configurationMethod),
+                     Expression.Constant(sourceConfigurationSection),
+                     Expression.Constant(keysToExclude.ToArray())));
+
+               bodyExpression = Expression.Block(methodExpressions);
+            }
+            else
+            {
+               bodyExpression = Expression.Empty();
+            }
+
+            return bodyExpression;
+         }
       }
 
       private static object? GetImplicitValueForNotSpecifiedKey(
@@ -845,18 +898,22 @@ namespace ConfigurationProcessor.Core.Implementation
 
       internal static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
       {
-         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Action<>))
+         if (type.IsGenericType)
          {
-            argumentType = type.GenericTypeArguments[0];
+            if (type.GetGenericTypeDefinition() == typeof(Action<>))
+            {
+               argumentType = type.GenericTypeArguments[0];
+               return true;
+            }
+            else if (type.GetGenericTypeDefinition() == typeof(Action<,>) || type.GetGenericTypeDefinition() == typeof(Action<,,>))
+            {
+               argumentType = type;
+               return true;
+            }
+         }
 
-            // we only accept class types that contain a parameterless public constructor
-            return true;
-         }
-         else
-         {
-            argumentType = null;
-            return false;
-         }
+         argumentType = null;
+         return false;
       }
 
       private static bool ParameterTypeHasPropertyMatches(this Type parameterType, IEnumerable<string> suppliedNames)

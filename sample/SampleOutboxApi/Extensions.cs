@@ -14,15 +14,6 @@ public static class Extensions
       return builder.SetResourceBuilder(resourceBuilder);
    }
 
-   public static IBusRegistrationConfigurator UsingActiveMq(this IBusRegistrationConfigurator configurator, Action<IActiveMqBusFactoryConfigurator> configure)
-   {
-      configurator.UsingActiveMq((ctx, cfg) =>
-      {
-         configure?.Invoke(cfg);
-      });
-      return configurator;
-   }
-
    public static IActiveMqBusFactoryConfigurator ConnectionString(this IActiveMqBusFactoryConfigurator configurator, string value, IConfigurationProcessor configurationProcessor)
    {
       var uri = new Uri(configurationProcessor.RootConfiguration.GetConnectionString(value) ?? value);

@@ -5,6 +5,7 @@
 using ConfigurationProcessor;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -269,7 +270,10 @@ namespace TestDummies
 
       public static void Reset2(this ComplexObject.ChildValue childValue)
       {
-         childValue.Time = null;
+         if (childValue != null)
+         {
+            childValue.Time = null;
+         }
       }
 
       public static void Append<T>(this ComplexObject obj, string value)
@@ -302,6 +306,38 @@ namespace TestDummies
       public static void ConnectionString(this ComplexObject obj, string value)
       {
          obj.Name = value;
+      }
+
+      public static IServiceCollection MultiParameterDelegate2(this IServiceCollection services, Action<ComplexObject, DbConnection> configurator)
+      {
+         var complexObj = new ComplexObject();
+         var dbConn = new DbConnection();
+         configurator(complexObj, dbConn);
+         services.AddSingleton(Options.Create(complexObj));
+         services.AddSingleton(Options.Create(dbConn));
+         return services;
+      }
+
+      public static IServiceCollection MultiParameterDelegate3(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection> configurator)
+      {
+         var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
+         var dbConn = new DbConnection();
+         configurator(complexObj, complexObj.Value, dbConn);
+         services.AddSingleton(Options.Create(complexObj));
+         services.AddSingleton(Options.Create(dbConn));
+         return services;
+      }
+
+      public static void MultiConfigure(this (ComplexObject Obj, DbConnection Conn) configurator, string value)
+      {
+         configurator.Obj.Name += value;
+         configurator.Conn.ConnectionString += value;
+      }
+
+      public static void MultiConfigure(this (ComplexObject Obj, ComplexObject.ChildValue Child, DbConnection Conn) configurator, string value)
+      {
+         configurator.Obj.Name += value;
+         configurator.Conn.ConnectionString += value;
       }
    }
 }

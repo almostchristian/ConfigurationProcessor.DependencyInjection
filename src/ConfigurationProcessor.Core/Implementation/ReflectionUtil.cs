@@ -32,6 +32,9 @@ namespace ConfigurationProcessor.Core.Implementation
       public static MethodInfo GetMethodInfo<T>(Expression<Action<T>> methodCallExpression)
           => GetMethodInfo((LambdaExpression)methodCallExpression);
 
+      public static MethodInfo GetGenericMethodInfo(Expression<Action> methodCallExpression)
+         => GetMethodInfo(methodCallExpression);
+
       private static MethodInfo GetMethodInfo(LambdaExpression methodCallExpr)
       {
          var baseExpression = methodCallExpr.Body;
