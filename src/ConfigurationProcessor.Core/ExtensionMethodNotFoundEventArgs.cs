@@ -17,11 +17,13 @@ namespace ConfigurationProcessor.Core
       internal ExtensionMethodNotFoundEventArgs(
          IEnumerable<MethodInfo> candidateMethods,
          IEnumerable<string> candidateNames,
+         string originalMethodName,
          Type extensionMethodType,
          IReadOnlyDictionary<string, IConfigurationSection>? suppliedArguments)
       {
          CandidateMethods = candidateMethods;
          CandidateNames = candidateNames;
+         OriginalMethodName = originalMethodName;
          ExtensionMethodType = extensionMethodType;
          SuppliedArguments = suppliedArguments;
       }
@@ -35,6 +37,11 @@ namespace ConfigurationProcessor.Core
       /// Gets the candidate method names.
       /// </summary>
       public IEnumerable<string> CandidateNames { get; }
+
+      /// <summary>
+      /// Gets the original method name that was searched.
+      /// </summary>
+      public string OriginalMethodName { get; }
 
       /// <summary>
       /// Gets the extension method type that was searched.

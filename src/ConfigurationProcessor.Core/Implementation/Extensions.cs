@@ -194,6 +194,8 @@ namespace ConfigurationProcessor.Core.Implementation
 
                invoker(args, configurationMethod);
             }
+
+            resolutionContext.OnExtensionMethodFound?.Invoke(methodName);
          }
          else
          {
@@ -207,6 +209,7 @@ namespace ConfigurationProcessor.Core.Implementation
             var errorEventArgs = new ExtensionMethodNotFoundEventArgs(
                configurationMethods,
                candidateNames,
+               methodName,
                extensionArgumentType,
                paramArgs?.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
 
@@ -252,7 +255,7 @@ namespace ConfigurationProcessor.Core.Implementation
          return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
       }
 
-      private static void ThrowMissingMethodException(ExtensionMethodNotFoundEventArgs args)
+      internal static void ThrowMissingMethodException(ExtensionMethodNotFoundEventArgs args)
       {
          string message;
          var methods = args.CandidateMethods
@@ -522,59 +525,76 @@ namespace ConfigurationProcessor.Core.Implementation
          Type argumentType,
          string? originalKey)
       {
-         if (argumentType.Name.StartsWith("Action`2", StringComparison.Ordinal))
+         if (argumentType.Name.StartsWith("Action`", StringComparison.Ordinal))
          {
+            var tracker = new ChildContextMissingMethodTracker(resolutionContext);
+            var childResolutionContext = new ResolutionContext(
+               resolutionContext.AssemblyFinder,
+               resolutionContext.RootConfiguration,
+               sourceConfigurationSection!,
+               resolutionContext.AdditionalMethods,
+               tracker.OnExtensionMethodNotFound,
+               tracker.OnExtensionMethodFound,
+               argumentType);
+
+            var validateExpression = Expression.Call(Expression.Constant(tracker), nameof(ChildContextMissingMethodTracker.Validate), Type.EmptyTypes);
             var genArgs = argumentType.GetGenericArguments();
-            var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(genArgs[0], true);
-            var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(genArgs[1], true);
-            var combinedArgType = typeof(ValueTuple<,>).MakeGenericType(genArgs);
-            var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2);
-            var bodyExpression3 = BuildExpression(combinedArg, combinedArgType, true);
-            var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3);
-            var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2).Compile();
-            return lambda;
-         }
-         else if (argumentType.Name.StartsWith("Action`3", StringComparison.Ordinal))
-         {
-            var genArgs = argumentType.GetGenericArguments();
-            var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(genArgs[0], true);
-            var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(genArgs[1], true);
-            var (parameterExpression3, bodyExpression3) = BuildExpressionWithParam(genArgs[2], true);
-            var combinedArgType = typeof(ValueTuple<,,>).MakeGenericType(genArgs);
-            var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2, parameterExpression3);
-            var bodyExpression4 = BuildExpression(combinedArg, combinedArgType, true);
-            var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3, bodyExpression4);
-            var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2, parameterExpression3).Compile();
-            return lambda;
+            if (genArgs.Length == 2)
+            {
+               var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(childResolutionContext, genArgs[0]);
+               var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(childResolutionContext, genArgs[1]);
+               var combinedArgType = typeof(ValueTuple<,>).MakeGenericType(genArgs);
+               var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2);
+               var bodyExpression3 = BuildExpression(childResolutionContext, combinedArg, combinedArgType);
+               var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3, validateExpression);
+               var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2).Compile();
+               return lambda;
+            }
+            else if (genArgs.Length == 3)
+            {
+               var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(childResolutionContext, genArgs[0]);
+               var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(childResolutionContext, genArgs[1]);
+               var (parameterExpression3, bodyExpression3) = BuildExpressionWithParam(childResolutionContext, genArgs[2]);
+               var combinedArgType = typeof(ValueTuple<,,>).MakeGenericType(genArgs);
+               var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2, parameterExpression3);
+               var bodyExpression4 = BuildExpression(childResolutionContext, combinedArg, combinedArgType);
+               var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3, bodyExpression4, validateExpression);
+               var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2, parameterExpression3).Compile();
+               return lambda;
+            }
+            else
+            {
+               throw new NotSupportedException($"Action delegate with the arity of {genArgs.Length} is not supported.");
+            }
          }
          else
          {
-            var (parameterExpression, bodyExpression) = BuildExpressionWithParam(argumentType);
+            var childResolutionContext = new ResolutionContext(
+               resolutionContext.AssemblyFinder,
+               resolutionContext.RootConfiguration,
+               sourceConfigurationSection!,
+               resolutionContext.AdditionalMethods,
+               resolutionContext.OnExtensionMethodNotFound,
+               null,
+               argumentType);
+            var (parameterExpression, bodyExpression) = BuildExpressionWithParam(childResolutionContext, argumentType);
 
             var lambda = Expression.Lambda(typeof(Action<>).MakeGenericType(argumentType), bodyExpression, parameterExpression).Compile();
             return lambda;
          }
 
-         (ParameterExpression, Expression) BuildExpressionWithParam(Type argumentType, bool handleMissing = false)
+         (ParameterExpression, Expression) BuildExpressionWithParam(ResolutionContext childResolutionContext, Type argumentType)
          {
             var parameterExpression = Expression.Parameter(argumentType);
-            return (parameterExpression, BuildExpression(parameterExpression, argumentType, handleMissing));
+            return (parameterExpression, BuildExpression(childResolutionContext, parameterExpression, argumentType));
          }
 
-         Expression BuildExpression(Expression parameterExpression, Type argumentType, bool handleMissing = false)
+         Expression BuildExpression(ResolutionContext childResolutionContext, Expression parameterExpression, Type argumentType)
          {
             Expression bodyExpression;
             if (sourceConfigurationSection?.Exists() == true)
             {
                var methodExpressions = new List<Expression>();
-
-               var childResolutionContext = new ResolutionContext(
-                  resolutionContext.AssemblyFinder,
-                  resolutionContext.RootConfiguration,
-                  sourceConfigurationSection,
-                  resolutionContext.AdditionalMethods,
-                  handleMissing ? e => e.Handled = true : resolutionContext.OnExtensionMethodNotFound,
-                  argumentType);
 
                var keysToExclude = originalKey != null ? new List<string> { originalKey } : new List<string>();
                if (int.TryParse(sourceConfigurationSection.Key, out _))
@@ -948,14 +968,15 @@ namespace ConfigurationProcessor.Core.Implementation
 
       internal static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
       {
-         if (type.IsGenericType)
+         if (type.IsGenericType && type.Name.StartsWith("Action`", StringComparison.Ordinal))
          {
-            if (type.GetGenericTypeDefinition() == typeof(Action<>))
+            var genArgs = type.GetGenericArguments();
+            if (genArgs.Length == 1)
             {
-               argumentType = type.GenericTypeArguments[0];
+               argumentType = genArgs[0];
                return true;
             }
-            else if (type.GetGenericTypeDefinition() == typeof(Action<,>) || type.GetGenericTypeDefinition() == typeof(Action<,,>))
+            else
             {
                argumentType = type;
                return true;

@@ -328,6 +328,11 @@ namespace TestDummies
          return services;
       }
 
+      public static IServiceCollection MultiParameterDelegate4(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection, IComplexObject> configurator)
+      {
+         return services;
+      }
+
       public static void MultiConfigure(this (ComplexObject Obj, DbConnection Conn) configurator, string value)
       {
          configurator.Obj.Name += value;

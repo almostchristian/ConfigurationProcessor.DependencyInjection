@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
+using System.Reflection;
 using TestDummies;
 using static ConfigurationProcessor.DependencyInjection.UnitTests.Support.Extensions;
 
@@ -1418,6 +1419,31 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.False(option1.Value.Value.Time.HasValue);
          var option2 = sp.GetService<IOptions<DbConnection>>();
          Assert.Equal("abcdef", option2.Value.ConnectionString);
+      }
+
+      [Fact]
+      public void WithObjectNotation_MultiParameterDelegate4_ThrowsNotSupportedException()
+      {
+         var json = @"
+{
+   'MultiParameterDelegate4': {
+      'ConnectionString' : 'abc'
+   }
+}";
+         Assert.Throws<NotSupportedException>(() => BuildFromJson(json));
+      }
+
+      [Fact]
+      public void WithObjectNotation_MultiParameterDelegateWithUnmatchedMethod_ThrowsMissingMethodException()
+      {
+         var json = @"
+{
+   'MultiParameterDelegate3': {
+      'ConnectionStringZ' : 'abc'
+   }
+}";
+         var targetexception = Assert.Throws<TargetInvocationException>(() => BuildFromJson(json));
+         Assert.IsType<MissingMethodException>(targetexception.GetBaseException());
       }
 
       private IServiceProvider BuildFromJson(string json)
