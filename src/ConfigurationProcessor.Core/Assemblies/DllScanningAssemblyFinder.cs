@@ -31,8 +31,12 @@ namespace ConfigurationProcessor.Core.Assemblies
                         where Directory.Exists(probeDir)
                         from outputAssemblyPath in Directory.GetFiles(probeDir, "*.dll").Union(Directory.GetFiles(probeDir, "*.exe"))
                         let assemblyFileName = Path.GetFileNameWithoutExtension(outputAssemblyPath)
+#if NETSTANDARD2_0
                         where assemblyFileName.IndexOf("NUnit", StringComparison.OrdinalIgnoreCase) < 0
-                        let assemblyName = TryGetAssemblyNameFrom(outputAssemblyPath)
+#else
+                        where !assemblyFileName.Contains("NUnit", StringComparison.OrdinalIgnoreCase)
+#endif
+            let assemblyName = TryGetAssemblyNameFrom(outputAssemblyPath)
                         where assemblyName != null
                         select assemblyName;
 

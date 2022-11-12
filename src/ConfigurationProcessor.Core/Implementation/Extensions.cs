@@ -283,9 +283,9 @@ namespace ConfigurationProcessor.Core.Implementation
       private static bool IsValueTupleCompatible(this Type type, Type other)
       {
          if (type.IsGenericType &&
-            type.Name.StartsWith("ValueTuple`") &&
+            type.Name.StartsWith("ValueTuple`", StringComparison.Ordinal) &&
             other.IsGenericType &&
-            other.Name.StartsWith("ValueTuple`") &&
+            other.Name.StartsWith("ValueTuple`", StringComparison.Ordinal) &&
             other != type &&
             type.GenericTypeArguments.Length == other.GenericTypeArguments.Length)
          {

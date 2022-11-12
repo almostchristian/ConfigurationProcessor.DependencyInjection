@@ -15,7 +15,12 @@ namespace ConfigurationProcessor.Core.Assemblies
 
       protected static bool IsCaseInsensitiveMatch(string? text, string textToFind)
       {
-         return text != null && text.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0;
+         return text != null &&
+#if NETSTANDARD2_0
+            text.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0;
+#else
+            text.Contains(textToFind, StringComparison.OrdinalIgnoreCase);
+#endif
       }
 
       public static AssemblyFinder Auto()
