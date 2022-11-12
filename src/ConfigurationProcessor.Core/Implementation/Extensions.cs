@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -33,8 +34,8 @@ namespace ConfigurationProcessor.Core.Implementation
          MethodFilterFactory? methodFilterFactory,
          TypeResolver[] typeArgs,
          Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)>? paramArgs,
-         Func<List<object>>? argumentFactory,
-         Action<List<object>, MethodInfo> invoker)
+         Func<List<object?>>? argumentFactory,
+         Action<List<object?>, MethodInfo> invoker)
       {
          methodFilterFactory ??= MethodFilterFactories.DefaultMethodFilterFactory;
 
@@ -132,7 +133,7 @@ namespace ConfigurationProcessor.Core.Implementation
             }
             else if (args != null)
             {
-               configurationMethod = configurationMethods.SelectConfigurationMethod(args.Select(a => a.GetType()).ToArray());
+               configurationMethod = configurationMethods.SelectConfigurationMethod(args.Select(a => a?.GetType() ?? typeof(object)).ToArray());
             }
             else
             {
@@ -175,12 +176,12 @@ namespace ConfigurationProcessor.Core.Implementation
             else if (isCollection)
             {
                var collection = GetCollection(resolutionContext, configSection!, configurationMethod);
-               invoker(new List<object> { collection! }, configurationMethod);
+               invoker(new List<object?> { collection }, configurationMethod);
             }
             else
             {
                var parameters = configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0).ToArray();
-               args = new List<object>();
+               args = new List<object?>();
 
                for (int i = 0; i < parameters.Length; i++)
                {
@@ -229,7 +230,7 @@ namespace ConfigurationProcessor.Core.Implementation
           bool getChildren,
           IEnumerable<string>? exclude,
           MethodFilterFactory? methodFilterFactory,
-          Action<List<object>, MethodInfo> invoker)
+          Action<List<object?>, MethodInfo> invoker)
       {
          var methods = resolutionContext.GetMethodCalls(directive, getChildren, exclude);
          foreach (var (methodName, (typeArgs, configSection, configArgs)) in methods.SelectMany(g => g.Select(x => (MethodName: g.Key, Config: x))))
@@ -484,7 +485,7 @@ namespace ConfigurationProcessor.Core.Implementation
             (arguments, methodInfo) => methodInfo.InvokeWithArguments(target, arguments));
       }
 
-      private static void InvokeWithArguments(this MethodInfo methodInfo, object? target, List<object> arguments)
+      internal static void InvokeWithArguments(this MethodInfo methodInfo, object? target, List<object?> arguments)
       {
          if (methodInfo.IsStatic)
          {
@@ -492,10 +493,21 @@ namespace ConfigurationProcessor.Core.Implementation
             target = null;
          }
 
-         for (int i = 0; i < arguments.Count; i++)
+         var parameters = methodInfo.GetParameters();
+         for (int i = 0; i < parameters.Length; i++)
          {
-            var argument = arguments[i];
-            var expectedArgType = methodInfo.GetParameters()[i].ParameterType;
+            object? argument;
+            if (arguments.Count > i)
+            {
+               argument = arguments[i];
+            }
+            else
+            {
+               argument = null;
+               arguments.Add(null);
+            }
+
+            var expectedArgType = parameters[i].ParameterType;
 
             if (argument != null && argument.GetType().IsValueTupleCompatible(expectedArgType))
             {
@@ -515,7 +527,14 @@ namespace ConfigurationProcessor.Core.Implementation
             }
          }
 
-         methodInfo.Invoke(target, arguments.ToArray());
+         try
+         {
+            methodInfo.Invoke(target, arguments.ToArray());
+         }
+         catch (TargetInvocationException invocationEx)
+         {
+            throw invocationEx.InnerException;
+         }
       }
 
       internal static Delegate GenerateLambda(
@@ -525,7 +544,7 @@ namespace ConfigurationProcessor.Core.Implementation
          Type argumentType,
          string? originalKey)
       {
-         if (argumentType.Name.StartsWith("Action`", StringComparison.Ordinal))
+         if (argumentType.FullName.StartsWith("System.Action`", StringComparison.Ordinal))
          {
             var tracker = new ChildContextMissingMethodTracker(resolutionContext);
             var childResolutionContext = new ResolutionContext(
@@ -539,33 +558,36 @@ namespace ConfigurationProcessor.Core.Implementation
 
             var validateExpression = Expression.Call(Expression.Constant(tracker), nameof(ChildContextMissingMethodTracker.Validate), Type.EmptyTypes);
             var genArgs = argumentType.GetGenericArguments();
-            if (genArgs.Length == 2)
+
+            var parameterExpressions = new List<ParameterExpression>();
+            var bodyExpressions = new List<Expression>();
+
+            foreach (var genArg in genArgs)
             {
-               var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(childResolutionContext, genArgs[0]);
-               var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(childResolutionContext, genArgs[1]);
-               var combinedArgType = typeof(ValueTuple<,>).MakeGenericType(genArgs);
-               var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2);
-               var bodyExpression3 = BuildExpression(childResolutionContext, combinedArg, combinedArgType);
-               var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3, validateExpression);
-               var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2).Compile();
-               return lambda;
+               var (parameterExpression, bodyExpression) = BuildExpressionWithParam(childResolutionContext, genArg);
+               parameterExpressions.Add(parameterExpression);
+               bodyExpressions.Add(bodyExpression);
             }
-            else if (genArgs.Length == 3)
+
+            var combinedArgOpenType = genArgs.Length switch
             {
-               var (parameterExpression1, bodyExpression1) = BuildExpressionWithParam(childResolutionContext, genArgs[0]);
-               var (parameterExpression2, bodyExpression2) = BuildExpressionWithParam(childResolutionContext, genArgs[1]);
-               var (parameterExpression3, bodyExpression3) = BuildExpressionWithParam(childResolutionContext, genArgs[2]);
-               var combinedArgType = typeof(ValueTuple<,,>).MakeGenericType(genArgs);
-               var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpression1, parameterExpression2, parameterExpression3);
-               var bodyExpression4 = BuildExpression(childResolutionContext, combinedArg, combinedArgType);
-               var combinedBody = Expression.Block(bodyExpression1, bodyExpression2, bodyExpression3, bodyExpression4, validateExpression);
-               var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpression1, parameterExpression2, parameterExpression3).Compile();
-               return lambda;
-            }
-            else
-            {
-               throw new NotSupportedException($"Action delegate with the arity of {genArgs.Length} is not supported.");
-            }
+               2 => typeof(ValueTuple<,>),
+               3 => typeof(ValueTuple<,,>),
+               4 => typeof(ValueTuple<,,,>),
+               5 => typeof(ValueTuple<,,,,>),
+               6 => typeof(ValueTuple<,,,,,>),
+               7 => typeof(ValueTuple<,,,,,,>),
+               _ => throw new NotSupportedException($"Action delegate with the arity of {genArgs.Length} is not supported."),
+            };
+
+            var combinedArgType = combinedArgOpenType.MakeGenericType(genArgs);
+            var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpressions.ToArray());
+            var combinedExpression = BuildExpression(childResolutionContext, combinedArg, combinedArgType);
+            bodyExpressions.Add(combinedExpression);
+            bodyExpressions.Add(validateExpression);
+            var combinedBody = Expression.Block(bodyExpressions.ToArray());
+            var lambda = Expression.Lambda(argumentType, combinedBody, parameterExpressions.ToArray()).Compile();
+            return lambda;
          }
          else
          {
@@ -676,7 +698,7 @@ namespace ConfigurationProcessor.Core.Implementation
          }
          else if (parameter.ParameterType == typeof(IConfigurationProcessor))
          {
-            return new ConfigurationHelperImplementation(resolutionContext, sourceConfigurationSection!, null);
+            return new ConfigurationHelperImplementation(resolutionContext, sourceConfigurationSection!);
          }
 
          return parameter.DefaultValue;
@@ -968,13 +990,17 @@ namespace ConfigurationProcessor.Core.Implementation
 
       internal static bool IsConfigurationOptionsBuilder(this Type type, [NotNullWhen(true)] out Type? argumentType)
       {
-         if (type.IsGenericType && type.Name.StartsWith("Action`", StringComparison.Ordinal))
+         if (type.IsGenericType && type.FullName.StartsWith("System.Action`", StringComparison.Ordinal))
          {
             var genArgs = type.GetGenericArguments();
             if (genArgs.Length == 1)
             {
                argumentType = genArgs[0];
                return true;
+            }
+            else if (genArgs.Any(t => t == typeof(object)))
+            {
+               throw new NotSupportedException("An Action delegate with an argument type of System.Object is not supported");
             }
             else
             {

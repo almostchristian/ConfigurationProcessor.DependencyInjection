@@ -1379,28 +1379,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void WithObjectNotation_MultiParameterDelegate2_SetsValue()
-      {
-         var json = @"
-{
-   'MultiParameterDelegate2': {
-      'ConnectionString' : 'abc',
-      'ConfigureValue': {
-         'Time' : '13:00:10'
-      },
-      'MultiConfigure': 'def'
-   }
-}";
-         var sp = BuildFromJson(json);
-         var option1 = sp.GetService<IOptions<ComplexObject>>();
-         Assert.Equal("abcdef", option1.Value.Name);
-         Assert.Equal(new TimeSpan(13, 0, 10), option1.Value.Value.Time);
-         var option2 = sp.GetService<IOptions<DbConnection>>();
-         Assert.Equal("abcdef", option2.Value.ConnectionString);
-      }
-
-      [Fact]
-      public void WithObjectNotation_MultiParameterDelegate3_SetsValue()
+      public void WithObjectNotation_MultiParameterDelegateWithValueTupleExtension_SetsValue()
       {
          var json = @"
 {
@@ -1421,16 +1400,31 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Equal("abcdef", option2.Value.ConnectionString);
       }
 
-      [Fact]
-      public void WithObjectNotation_MultiParameterDelegate4_ThrowsNotSupportedException()
+      [Theory]
+      [InlineData("MultiParameterDelegate2")]
+      [InlineData("MultiParameterDelegate3")]
+      [InlineData("MultiParameterDelegate4")]
+      [InlineData("MultiParameterDelegate5")]
+      [InlineData("MultiParameterDelegate6")]
+      [InlineData("MultiParameterDelegate7")]
+      public void WithObjectNotation_MultiParameterDelegateN_SetsValue(string methodName)
       {
          var json = @"
 {
-   'MultiParameterDelegate4': {
-      'ConnectionString' : 'abc'
+   'MultiParameterDelegateN': {
+      'ConnectionString' : 'abc',
+      'ConfigureValue': {
+         'Time' : '13:00:10'
+      },
+      'MultiConfigure': 'def'
    }
 }";
-         Assert.Throws<NotSupportedException>(() => BuildFromJson(json));
+         var sp = BuildFromJson(json.Replace("MultiParameterDelegateN", methodName));
+         var option1 = sp.GetService<IOptions<ComplexObject>>();
+         Assert.Equal("abcdef", option1.Value.Name);
+         Assert.Equal(new TimeSpan(13, 0, 10), option1.Value.Value.Time);
+         var option2 = sp.GetService<IOptions<DbConnection>>();
+         Assert.Equal("abcdef", option2.Value.ConnectionString);
       }
 
       [Fact]
@@ -1442,8 +1436,31 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       'ConnectionStringZ' : 'abc'
    }
 }";
-         var targetexception = Assert.Throws<TargetInvocationException>(() => BuildFromJson(json));
-         Assert.IsType<MissingMethodException>(targetexception.GetBaseException());
+         Assert.Throws<MissingMethodException>(() => BuildFromJson(json));
+      }
+
+      [Fact]
+      public void WithObjectNotation_MultiParameterDelegate8_ThrowsNotSupportedException()
+      {
+         var json = @"
+{
+   'MultiParameterDelegate8': {
+      'ConnectionString' : 'abc'
+   }
+}";
+         Assert.Throws<NotSupportedException>(() => BuildFromJson(json));
+      }
+
+      [Fact]
+      public void WithObjectNotation_MultiParameterDelegateWithObjectParameter_ThrowsNotSupportedException()
+      {
+         var json = @"
+{
+   'MultiParameterDelegateWithObject': {
+      'ConnectionString' : 'abc'
+   }
+}";
+         Assert.Throws<NotSupportedException>(() => BuildFromJson(json));
       }
 
       private IServiceProvider BuildFromJson(string json)

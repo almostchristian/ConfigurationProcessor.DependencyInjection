@@ -29,18 +29,7 @@ namespace ConfigurationProcessor.Core.Implementation
                getChildren,
                null,
                options.MethodFilterFactory,
-               (arguments, methodInfo) =>
-               {
-                  if (methodInfo.IsStatic)
-                  {
-                     arguments.Insert(0, builder);
-                     methodInfo.Invoke(null, arguments.ToArray());
-                  }
-                  else
-                  {
-                     methodInfo.Invoke(builder, arguments.ToArray());
-                  }
-               });
+               (arguments, methodInfo) => methodInfo.InvokeWithArguments(builder, arguments));
          }
       }
    }

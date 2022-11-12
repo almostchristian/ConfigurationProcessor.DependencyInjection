@@ -5,7 +5,7 @@
    </PropertyGroup>
 
    <PropertyGroup>
-      <Version>1.8.2</Version>
+      <Version>1.9.0</Version>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
       <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
@@ -23,6 +23,8 @@
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
       <PackageReleaseNotes>
+v1.9.0
+   - Support Action delegates of up to 7 generic arguments as configuration targets.
 v1.8.1
    - Support Action&lt;T1, T2&gt; and Action&lt;T1, T2, T3&gt; as configuration targets.
 v1.7.2

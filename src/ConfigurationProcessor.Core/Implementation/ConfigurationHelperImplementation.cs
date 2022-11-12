@@ -13,18 +13,16 @@ namespace ConfigurationProcessor.Core.Implementation
    {
       private readonly ResolutionContext resolutionContext;
       private readonly IConfigurationSection configurationSection;
-      private readonly ConfigurationReaderOptions? options;
 
-      public ConfigurationHelperImplementation(ResolutionContext resolutionContext, IConfigurationSection configurationSection, ConfigurationReaderOptions? options)
+      public ConfigurationHelperImplementation(ResolutionContext resolutionContext, IConfigurationSection configurationSection)
       {
          this.resolutionContext = resolutionContext;
          this.configurationSection = configurationSection;
-         this.options = options;
       }
 
       public IConfiguration RootConfiguration => resolutionContext.RootConfiguration;
 
-      public void Invoke<T>(T instance, string methodName, params object[] arguments)
+      public void Invoke<T>(T instance, string methodName, params object?[] arguments)
          where T : class
       {
          resolutionContext.CallConfigurationMethod(
@@ -35,21 +33,7 @@ namespace ConfigurationProcessor.Core.Implementation
             Array.Empty<TypeResolver>(),
             null!,
             () => arguments.ToList(),
-            (arguments, methodInfo) =>
-            {
-               if (methodInfo.IsStatic)
-               {
-                  arguments.Insert(0, instance);
-               }
-
-               var paramCount = methodInfo.GetParameters().Length;
-               for (int i = arguments.Count; i < paramCount; i++)
-               {
-                  arguments.Add(null!);
-               }
-
-               methodInfo.Invoke(instance, arguments.ToArray());
-            });
+            (arguments, methodInfo) => methodInfo.InvokeWithArguments(instance, arguments));
       }
    }
 }

@@ -23,7 +23,7 @@ namespace ConfigurationProcessor
       /// <param name="instance"></param>
       /// <param name="methodName"></param>
       /// <param name="arguments"></param>
-      void Invoke<T>(T instance, string methodName, params object[] arguments)
+      void Invoke<T>(T instance, string methodName, params object?[] arguments)
          where T : class;
    }
 }
