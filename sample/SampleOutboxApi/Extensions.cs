@@ -21,7 +21,7 @@ public static class Extensions
       return configurator.HostSettings(uri.Host, uri.Port, userPair?.ElementAtOrDefault(0), userPair?.ElementAtOrDefault(1));
    }
 
-   public static IActiveMqBusFactoryConfigurator HostSettings(this IActiveMqBusFactoryConfigurator configurator, string host, int port = default, string username = null, string password = null)
+   public static IActiveMqBusFactoryConfigurator HostSettings(this IActiveMqBusFactoryConfigurator configurator, string host, int port = default, string? username = null, string? password = null)
    {
       configurator.Host(host, port, c =>
       {
