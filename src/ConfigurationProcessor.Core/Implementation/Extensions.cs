@@ -280,6 +280,34 @@ namespace ConfigurationProcessor.Core.Implementation
          throw new MissingMethodException(message);
       }
 
+      private static bool IsValueTupleCompatible(this Type type, Type other)
+      {
+         if (type.IsGenericType &&
+            type.Name.StartsWith("ValueTuple`") &&
+            other.IsGenericType &&
+            other.Name.StartsWith("ValueTuple`") &&
+            other != type &&
+            type.GenericTypeArguments.Length == other.GenericTypeArguments.Length)
+         {
+            // compare each element if they're compatible
+            return type.GenericTypeArguments
+               .Zip(other.GenericTypeArguments, (t1, t2) => (t1, t2))
+               .All(args => IsTypeCompatible(args.t1, args.t2));
+         }
+
+         return false;
+      }
+
+      private static bool IsTypeCompatible(Type configType, Type? targetType)
+      {
+         if (targetType != null && IsValueTupleCompatible(configType, targetType))
+         {
+            return true;
+         }
+
+         return targetType != null && targetType.IsAssignableFrom(configType);
+      }
+
       private static List<MethodInfo> FindConfigurationExtensionMethods(
           this ResolutionContext resolutionContext,
           string key,
@@ -298,8 +326,8 @@ namespace ConfigurationProcessor.Core.Implementation
              .Concat(interfaces.Select(t => t.GetTypeInfo()))
              .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
              .Where(m => filter == null || filter(m, key))
-             .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || m.DeclaringType == configType || interfaces.Contains(m.DeclaringType)))
-             .Where(m => !m.IsStatic || SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType.IsAssignableFrom(configType) == true) // If static method, checks that the first parameter is same as the extension type
+             .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || IsTypeCompatible(configType, m.DeclaringType) || interfaces.Contains(m.DeclaringType)))
+             .Where(m => !m.IsStatic || IsTypeCompatible(configType, SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType)) // If static method, checks that the first parameter is same as the extension type
              .ToList();
 
          if (typeArgs == null || typeArgs.Length == 0)
@@ -450,19 +478,41 @@ namespace ConfigurationProcessor.Core.Implementation
             true,
             excludeKeys,
             null,
-            (arguments, methodInfo) =>
+            (arguments, methodInfo) => methodInfo.InvokeWithArguments(target, arguments));
+      }
+
+      private static void InvokeWithArguments(this MethodInfo methodInfo, object? target, List<object> arguments)
+      {
+         if (methodInfo.IsStatic)
+         {
+            arguments.Insert(0, target!);
+            target = null;
+         }
+
+         for (int i = 0; i < arguments.Count; i++)
+         {
+            var argument = arguments[i];
+            var expectedArgType = methodInfo.GetParameters()[i].ParameterType;
+
+            if (argument != null && argument.GetType().IsValueTupleCompatible(expectedArgType))
             {
-               if (methodInfo.IsStatic)
+               // we convert the tuple to a compatible type
+               arguments[i] = Activator.CreateInstance(expectedArgType, GetElements());
+
+               object[] GetElements()
                {
-                  var nargs = arguments.ToList();
-                  nargs.Insert(0, target!);
-                  methodInfo.Invoke(null, nargs.ToArray());
+#if NETSTANDARD2_1_OR_GREATER
+                  var tuple = (ITuple)argument;
+                  return Enumerable.Range(0, tuple.Length).Select(i => tuple[i]).ToArray();
+#else
+                  var elements = argument.GetType().GetFields();
+                  return elements.Select(e => e.GetValue(argument)).ToArray();
+#endif
                }
-               else
-               {
-                  methodInfo.Invoke(target, arguments.ToArray());
-               }
-            });
+            }
+         }
+
+         methodInfo.Invoke(target, arguments.ToArray());
       }
 
       internal static Delegate GenerateLambda(

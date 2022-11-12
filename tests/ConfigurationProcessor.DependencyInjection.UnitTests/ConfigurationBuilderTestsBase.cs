@@ -1378,7 +1378,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void WithObjectNotiation_MultiParameterDelegate2_SetsValue()
+      public void WithObjectNotation_MultiParameterDelegate2_SetsValue()
       {
          var json = @"
 {
@@ -1399,7 +1399,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
-      public void WithObjectNotiation_MultiParameterDelegate3_SetsValue()
+      public void WithObjectNotation_MultiParameterDelegate3_SetsValue()
       {
          var json = @"
 {

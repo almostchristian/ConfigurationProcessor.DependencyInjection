@@ -334,7 +334,7 @@ namespace TestDummies
          configurator.Conn.ConnectionString += value;
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, ComplexObject.ChildValue Child, DbConnection Conn) configurator, string value)
+      public static void MultiConfigure(this (ComplexObject Obj, IChildValue Child, DbConnection Conn) configurator, string value)
       {
          configurator.Obj.Name += value;
          configurator.Conn.ConnectionString += value;
