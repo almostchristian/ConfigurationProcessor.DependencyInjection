@@ -89,7 +89,11 @@ namespace ConfigurationProcessor.Core.Implementation
             var newTypeName = typeName.Substring(1).ToString();
             return (method, argIndex) =>
             {
-               if (newTypeName.Contains('@'))
+#if NETSTANDARD2_0
+               if (newTypeName.IndexOf('@') >= 0)
+#else
+               if (newTypeName.Contains('@', StringComparison.Ordinal))
+#endif
                {
                   var split = newTypeName.Split('@');
                   return ReflectionUtil.CreateType(split[0], GetType(split[1], rootConfiguration, ambientConfiguration)(method, argIndex));
