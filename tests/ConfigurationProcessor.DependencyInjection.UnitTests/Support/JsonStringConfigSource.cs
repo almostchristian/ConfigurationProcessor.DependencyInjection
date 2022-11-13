@@ -17,14 +17,13 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests.Support
       }
 
       public IConfigurationProvider Build(IConfigurationBuilder builder)
-      {
-         return new JsonStringConfigProvider(json);
-      }
+         => new JsonStringConfigProvider(json);
 
-      public static IConfigurationSection LoadSection(string json, string section)
-      {
-         return new ConfigurationBuilder().Add(new JsonStringConfigSource(json)).Build().GetSection(section);
-      }
+      public static IConfiguration LoadConfiguration(string json)
+         => new ConfigurationBuilder().Add(new JsonStringConfigSource(json)).Build();
+
+      public static IConfigurationSection LoadConfigurationSection(string json, string section)
+         => LoadConfiguration(json).GetSection(section);
 
       public static IDictionary<string, string> LoadData(string json)
       {

@@ -97,7 +97,7 @@ If the extension method is parameterless, use `true` instead of an object. The c
 ```
 
 ### Action Delegate mapping
-ConfigurationProcessor can be used with extension methods that use a generic action delegate of up to 7 argument types. An generic argument type of `System.Object` is not supported.
+ConfigurationProcessor can be used with extension methods that use a generic action delegate. Generic arguments type of `System.Object` is not supported.
 
 Given the extension method below:
 ```csharp
@@ -126,7 +126,7 @@ The configuration below is equivalent to calling `services.AddMyService(options 
 ```
 
 #### Action delegates with more than one argument
-When the action delegates with more than one argument, all matching configuration methods will be called
+When the action delegates with more than one argument, all matching configuration methods will be called.
 
 Given the extension method below:
 ```csharp

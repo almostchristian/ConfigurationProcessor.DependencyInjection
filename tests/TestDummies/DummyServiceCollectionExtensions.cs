@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace TestDummies
 {
@@ -276,6 +277,14 @@ namespace TestDummies
          }
       }
 
+      public static void Reset2(this IChildValue childValue)
+      {
+         if (childValue != null)
+         {
+            childValue.Time = null;
+         }
+      }
+
       public static void Append<T>(this ComplexObject obj, string value)
       {
          obj.Name += value;
@@ -328,7 +337,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection MultiParameterDelegate3(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection> configurator)
+      public static IServiceCollection MultiParameterDelegate3(this IServiceCollection services, Action<ComplexObject, IChildValue, DbConnection> configurator)
       {
          var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
          var dbConn = new DbConnection();
@@ -338,7 +347,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection MultiParameterDelegate4(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection, IComplexObject> configurator)
+      public static IServiceCollection MultiParameterDelegate4(this IServiceCollection services, Action<ComplexObject, IChildValue, DbConnection, IComplexObject> configurator)
       {
          var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
          var dbConn = new DbConnection();
@@ -348,7 +357,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection MultiParameterDelegate5(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection, IComplexObject, IComplexObject> configurator)
+      public static IServiceCollection MultiParameterDelegate5(this IServiceCollection services, Action<ComplexObject, IChildValue, DbConnection, IComplexObject, IComplexObject> configurator)
       {
          var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
          var dbConn = new DbConnection();
@@ -358,7 +367,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection MultiParameterDelegate6(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection, IComplexObject, IComplexObject, IComplexObject> configurator)
+      public static IServiceCollection MultiParameterDelegate6(this IServiceCollection services, Action<ComplexObject, IChildValue, DbConnection, IComplexObject, IComplexObject, IComplexObject> configurator)
       {
          var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
          var dbConn = new DbConnection();
@@ -368,7 +377,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection MultiParameterDelegate7(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection, IComplexObject, IComplexObject, IComplexObject, IComplexObject> configurator)
+      public static IServiceCollection MultiParameterDelegate7(this IServiceCollection services, Action<ComplexObject, IChildValue, DbConnection, IComplexObject, IComplexObject, IComplexObject, IComplexObject> configurator)
       {
          var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
          var dbConn = new DbConnection();
@@ -378,7 +387,7 @@ namespace TestDummies
          return services;
       }
 
-      public static IServiceCollection MultiParameterDelegate8(this IServiceCollection services, Action<ComplexObject, ComplexObject.ChildValue, DbConnection, IComplexObject, IComplexObject, IComplexObject, IComplexObject, IComplexObject> configurator)
+      public static IServiceCollection MultiParameterDelegate8(this IServiceCollection services, Action<ComplexObject, IChildValue, DbConnection, IComplexObject, IComplexObject, IComplexObject, IComplexObject, IComplexObject> configurator)
       {
          var complexObj = new ComplexObject { Value = new ComplexObject.ChildValue() };
          var dbConn = new DbConnection();
@@ -388,40 +397,57 @@ namespace TestDummies
          return services;
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, DbConnection Conn) configurator, string value)
+      public static void MultiConfigureComplex(ComplexObject Obj, DbConnection Conn, Action<ComplexObject> configureOptions)
       {
-         configurator.Obj.Name += value;
-         configurator.Conn.ConnectionString += value;
+         configureOptions(Obj);
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, IChildValue Child, DbConnection Conn) configurator, string value)
+      public static void MultiConfigureArray(ComplexObject Obj, DbConnection Conn, string[] names)
       {
-         configurator.Obj.Name += value;
-         configurator.Conn.ConnectionString += value;
+         Obj.Name += names.ElementAtOrDefault(0);
+         Conn.ConnectionString += names.ElementAtOrDefault(1);
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1) configurator, string value)
+      public static void MultiConfigure(ComplexObject Obj, DbConnection Conn, string value)
       {
-         configurator.Obj.Name += value;
-         configurator.Conn.ConnectionString += value;
+         Obj.Name += value;
+         Conn.ConnectionString += value;
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2) configurator, string value)
+      public static void MultiConfigure(ComplexObject Obj, IChildValue Child, DbConnection Conn, string value)
       {
-         configurator.Obj.Name += value;
-         configurator.Conn.ConnectionString += value;
+         Obj.Name += value;
+         Conn.ConnectionString += value;
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2, IComplexObject Obj3) configurator, string value)
+      public static void MultiConfigure(ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, string value)
       {
-         configurator.Obj.Name += value;
-         configurator.Conn.ConnectionString += value;
+         Obj.Name += value;
+         Conn.ConnectionString += value;
       }
 
-      public static void MultiConfigure(this (ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2, IComplexObject Obj3, IComplexObject Obj4) configurator, string value)
+      public static void MultiConfigure(ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2, string value)
       {
-         configurator.Obj.Name += value;
-         configurator.Conn.ConnectionString += value;
+         Obj.Name += value;
+         Conn.ConnectionString += value;
+      }
+
+      public static void MultiConfigure(ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2, IComplexObject Obj3, string value)
+      {
+         Obj.Name += value;
+         Conn.ConnectionString += value;
+      }
+
+      public static void MultiConfigure(ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2, IComplexObject Obj3, IComplexObject Obj4, string value)
+      {
+         Obj.Name += value;
+         Conn.ConnectionString += value;
+      }
+
+      public static void MultiConfigure(ComplexObject Obj, IChildValue Child, DbConnection Conn, IComplexObject Obj1, IComplexObject Obj2, IComplexObject Obj3, IComplexObject Obj4, IComplexObject Obj5, string value)
+      {
+         Obj.Name += value;
+         Conn.ConnectionString += value;
       }
    }
 }

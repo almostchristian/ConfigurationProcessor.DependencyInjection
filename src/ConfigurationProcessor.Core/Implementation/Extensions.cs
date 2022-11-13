@@ -20,7 +20,7 @@ namespace ConfigurationProcessor.Core.Implementation
 {
    internal static class Extensions
    {
-      public static readonly MethodInfo BindMappableValuesMethod = ReflectionUtil.GetMethodInfo<object>(o => BindMappableValues<object>(default!, default!, default!, default!, default!, default!)).MakeGenericMethod(typeof(object));
+      public static readonly MethodInfo BindMappableValuesMethod = ReflectionUtil.GetMethodInfo<object>(o => BindMappableValues(default!, default!, default!, default!, default!, default!));
       private const string GenericTypePattern = "(?<typename>[a-zA-Z][a-zA-Z0-9\\.]+)<(?<genparam>.+)>";
       private static readonly Regex GenericTypeRegex = new Regex(GenericTypePattern, RegexOptions.Compiled);
       private const char GenericTypeMarker = '`';
@@ -53,19 +53,24 @@ namespace ConfigurationProcessor.Core.Implementation
          MethodInfo? configurationMethod;
 
          var args = argumentFactory?.Invoke();
+         int? parameterSkip = null;
+         if (extensionArgumentType.FullName.StartsWith("System.Action`", StringComparison.Ordinal))
+         {
+            parameterSkip = extensionArgumentType.GetGenericArguments().Length;
+         }
 
          if (isCollection)
          {
             configurationMethod = configurationMethods
                 .Where(m =>
                 {
-                   var parameters = m.GetParameters();
-                   if (parameters.Length != (m.IsStatic ? 2 : 1))
+                   var parameters = m.GetParameters().Skip(parameterSkip ?? 0).ToArray();
+                   if (parameters.Length != (m.IsStatic && parameterSkip == null ? 2 : 1))
                    {
                       return false;
                    }
 
-                   var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
+                   var paramType = parameters[m.IsStatic && parameterSkip == null ? 1 : 0].ParameterType;
                    var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
 
                    if (isCollection)
@@ -74,7 +79,7 @@ namespace ConfigurationProcessor.Core.Implementation
                       try
                       {
 #pragma warning disable S1481 // Unused local variables should be removed
-                         var collection = GetCollection(resolutionContext, configSection!, m);
+                         var collection = GetCollection(resolutionContext, configSection!, m, parameterSkip);
 #pragma warning restore S1481 // Unused local variables should be removed
                       }
                       catch
@@ -94,17 +99,19 @@ namespace ConfigurationProcessor.Core.Implementation
             if (suppliedArgumentNames.Length == 1 && string.IsNullOrEmpty(suppliedArgumentNames.Single()) && configSection.Value != null)
             {
                var argvalue = configSection.Value;
+
                configurationMethod = configurationMethods
                   .Where(m =>
                   {
-                     var parameters = m.GetParameters();
+                     var parameters = m.GetParameters().Skip(parameterSkip ?? 0);
+                     var hasExtensionParam = m.IsStatic && !parameterSkip.HasValue;
                      System.Diagnostics.Debug.WriteLine(parameters.Count(p => !p.HasDefaultValue));
-                     if (parameters.Count(p => !p.HasDefaultValue && !p.HasImplicitValueWhenNotSpecified()) != (m.IsStatic ? 2 : 1))
+                     if (parameters.Count(p => !p.HasDefaultValue && !p.HasImplicitValueWhenNotSpecified()) != (hasExtensionParam ? 2 : 1))
                      {
                         return false;
                      }
 
-                     var parameter = m.GetParameters().Where(p => !p.HasImplicitValueWhenNotSpecified()).ElementAt(m.IsStatic ? 1 : 0);
+                     var parameter = m.GetParameters().Skip(parameterSkip ?? 0).Where(p => !p.HasImplicitValueWhenNotSpecified()).ElementAt(hasExtensionParam ? 1 : 0);
                      var paramType = parameter.ParameterType;
                      var isCollection = paramType.IsArray || (paramType.IsGenericType && typeof(List<>) == paramType.GetGenericTypeDefinition());
                      if (isCollection)
@@ -129,7 +136,7 @@ namespace ConfigurationProcessor.Core.Implementation
                   .SingleOrDefault($"Ambiguous match while searching for a method that accepts a single value.") ??
 
                   // if no match found, choose the parameterless overload
-                  configurationMethods.SingleOrDefault(m => m.GetParameters().Count(p => !p.HasDefaultValue) == (m.IsStatic ? 1 : 0));
+                  configurationMethods.SingleOrDefault(m => m.GetParameters().Skip(parameterSkip ?? 0).Count(p => !p.HasDefaultValue) == (m.IsStatic && parameterSkip == 0 ? 1 : 0));
             }
             else if (args != null)
             {
@@ -137,7 +144,7 @@ namespace ConfigurationProcessor.Core.Implementation
             }
             else
             {
-               configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames);
+               configurationMethod = configurationMethods.SelectConfigurationMethod(suppliedArgumentNames, parameterSkip);
             }
 
             if (configurationMethod == null)
@@ -146,13 +153,13 @@ namespace ConfigurationProcessor.Core.Implementation
                configurationMethod = configurationMethods
                    .Where(m =>
                    {
-                      var parameters = m.GetParameters();
-                      if (parameters.Length != (m.IsStatic ? 2 : 1))
+                      var parameters = m.GetParameters().Skip(parameterSkip ?? 0).ToArray();
+                      if (parameters.Length != (m.IsStatic && parameterSkip == null ? 2 : 1))
                       {
                          return false;
                       }
 
-                      var paramType = parameters[m.IsStatic ? 1 : 0].ParameterType;
+                      var paramType = parameters[m.IsStatic && parameterSkip == null ? 1 : 0].ParameterType;
                       return paramType.IsGenericType && typeof(Dictionary<,>) == paramType.GetGenericTypeDefinition();
                    })
                    .SingleOrDefault($"Ambigous match while searching for a method that accepts Dictionary<,>.");
@@ -175,12 +182,12 @@ namespace ConfigurationProcessor.Core.Implementation
             }
             else if (isCollection)
             {
-               var collection = GetCollection(resolutionContext, configSection!, configurationMethod);
+               var collection = GetCollection(resolutionContext, configSection!, configurationMethod, parameterSkip);
                invoker(new List<object?> { collection }, configurationMethod);
             }
             else
             {
-               var parameters = configurationMethod.GetParameters().Skip(configurationMethod.IsStatic ? 1 : 0).ToArray();
+               var parameters = configurationMethod.GetParameters().Skip(parameterSkip ?? (configurationMethod.IsStatic && parameterSkip == null ? 1 : 0)).ToArray();
                args = new List<object?>();
 
                for (int i = 0; i < parameters.Length; i++)
@@ -249,10 +256,10 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      private static IEnumerable? GetCollection(ResolutionContext resolutionContext, IConfigurationSection configSection, MethodInfo method)
+      private static IEnumerable? GetCollection(ResolutionContext resolutionContext, IConfigurationSection configSection, MethodInfo method, int? parameterSkip)
       {
          var argValue = new ObjectArgumentValue(configSection);
-         var collectionType = method.GetParameters().ElementAt(method.IsStatic ? 1 : 0).ParameterType;
+         var collectionType = method.GetParameters().Skip(parameterSkip ?? 0).ElementAt(method.IsStatic && parameterSkip == null ? 1 : 0).ParameterType;
          return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
       }
 
@@ -322,10 +329,11 @@ namespace ConfigurationProcessor.Core.Implementation
       {
          IReadOnlyCollection<Assembly> configurationAssemblies = resolutionContext.ConfigurationAssemblies;
          var interfaces = configType.GetInterfaces();
-         var candidateMethods = configurationAssemblies
+         var scannedTypes = configurationAssemblies
              .SelectMany(a => SafeGetExportedTypes(a)
                  .Select(t => t.GetTypeInfo())
-                 .Where(t => t.IsSealed && t.IsAbstract && !t.IsNested))
+                 .Where(t => t.IsSealed && t.IsAbstract && !t.IsNested));
+         var candidateMethods = scannedTypes
              .Union(new[] { configType.GetTypeInfo() })
              .Concat(interfaces.Select(t => t.GetTypeInfo()))
              .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
@@ -333,6 +341,14 @@ namespace ConfigurationProcessor.Core.Implementation
              .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || IsTypeCompatible(configType, m.DeclaringType) || interfaces.Contains(m.DeclaringType)))
              .Where(m => !m.IsStatic || IsTypeCompatible(configType, SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType)) // If static method, checks that the first parameter is same as the extension type
              .ToList();
+
+         if (configType.FullName.StartsWith("System.Action`", StringComparison.Ordinal))
+         {
+            var genericArgs = configType.GetGenericArguments();
+            candidateMethods.AddRange(scannedTypes
+               .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
+               .Where(m => m.GetParameters().Select(p => p.ParameterType).Take(genericArgs.Length).SequenceEqual(genericArgs)));
+         }
 
          if (typeArgs == null || typeArgs.Length == 0)
          {
@@ -455,9 +471,9 @@ namespace ConfigurationProcessor.Core.Implementation
          }
       }
 
-      public static void BindMappableValues<T>(
+      public static void BindMappableValues(
           this ResolutionContext resolutionContext,
-          T target,
+          object target,
           Type targetType,
           MethodInfo configurationMethod,
           IConfigurationSection sourceConfigurationSection,
@@ -476,20 +492,30 @@ namespace ConfigurationProcessor.Core.Implementation
 
          var excludeKeys = new HashSet<string>(properties.Select(x => x.Name).Union(excludedKeys), StringComparer.OrdinalIgnoreCase);
 
+         Action<List<object?>, MethodInfo> invoker = (arguments, methodInfo) => methodInfo.InvokeWithArguments(target, arguments);
+         if (target is object[] args && targetType.FullName.StartsWith("System.Action`", StringComparison.Ordinal))
+         {
+            invoker = (arguments, methodInfo) =>
+            {
+               arguments.InsertRange(0, args);
+               methodInfo.InvokeWithArguments(null, arguments);
+            };
+         }
+
          resolutionContext.CallConfigurationMethods(
             targetType,
             sourceConfigurationSection,
             true,
             excludeKeys,
             null,
-            (arguments, methodInfo) => methodInfo.InvokeWithArguments(target, arguments));
+            invoker);
       }
 
       internal static void InvokeWithArguments(this MethodInfo methodInfo, object? target, List<object?> arguments)
       {
-         if (methodInfo.IsStatic)
+         if (methodInfo.IsStatic && target != null)
          {
-            arguments.Insert(0, target!);
+            arguments.Insert(0, target);
             target = null;
          }
 
@@ -569,20 +595,8 @@ namespace ConfigurationProcessor.Core.Implementation
                bodyExpressions.Add(bodyExpression);
             }
 
-            var combinedArgOpenType = genArgs.Length switch
-            {
-               2 => typeof(ValueTuple<,>),
-               3 => typeof(ValueTuple<,,>),
-               4 => typeof(ValueTuple<,,,>),
-               5 => typeof(ValueTuple<,,,,>),
-               6 => typeof(ValueTuple<,,,,,>),
-               7 => typeof(ValueTuple<,,,,,,>),
-               _ => throw new NotSupportedException($"Action delegate with the arity of {genArgs.Length} is not supported."),
-            };
-
-            var combinedArgType = combinedArgOpenType.MakeGenericType(genArgs);
-            var combinedArg = Expression.New(combinedArgType.GetConstructor(genArgs), parameterExpressions.ToArray());
-            var combinedExpression = BuildExpression(childResolutionContext, combinedArg, combinedArgType);
+            var combinedArg = Expression.NewArrayInit(typeof(object), parameterExpressions.ToArray());
+            var combinedExpression = BuildExpression(childResolutionContext, combinedArg, argumentType);
             bodyExpressions.Add(combinedExpression);
             bodyExpressions.Add(validateExpression);
             var combinedBody = Expression.Block(bodyExpressions.ToArray());
@@ -633,13 +647,9 @@ namespace ConfigurationProcessor.Core.Implementation
                   methodExpressions.Add(Expression.Call(bindMethodExpression.Method, bindMethodExpression.Arguments[0], parameterExpression));
                }
 
-               var bindMethod = !parameterExpression.Type.IsValueType ?
-                  BindMappableValuesMethod :
-                  ReflectionUtil.GetGenericMethodInfo(() => BindMappableValues<object>(default!, default!, default!, default!, default!, default!)).MakeGenericMethod(parameterExpression.Type);
-
                methodExpressions.Add(
                   Expression.Call(
-                     bindMethod,
+                     BindMappableValuesMethod,
                      Expression.Constant(childResolutionContext),
                      parameterExpression,
                      Expression.Constant(argumentType),
@@ -846,21 +856,22 @@ namespace ConfigurationProcessor.Core.Implementation
 
       private static MethodInfo? SelectConfigurationMethod(
           this IEnumerable<MethodInfo> candidateMethods,
-          IEnumerable<string> suppliedArgumentNames)
+          IEnumerable<string> suppliedArgumentNames,
+          int? parameterSkip)
       {
          // Per issue #111, it is safe to use case-insensitive matching on argument names. The CLR doesn't permit this type
          // of overloading, and the Microsoft.Extensions.Configuration keys are case-insensitive (case is preserved with some
          // config sources, but key-matching is case-insensitive and case-preservation does not appear to be guaranteed).
          var selectedMethods = candidateMethods
              .Where(m => m.GetParameters()
-                         .Skip(1)
+                         .Skip(1 + (parameterSkip ?? 0))
                          .All(p => p.HasImplicitValueWhenNotSpecified() ||
                                    p.IsConfigurationOptionsBuilder(out _) ||
                                    p.ParameterType!.ParameterTypeHasPropertyMatches(suppliedArgumentNames) ||
                                    ParameterNameMatches(p.Name!, suppliedArgumentNames)))
              .GroupBy(m =>
              {
-                var matchingArgs = m.GetParameters().Where(p => p.IsConfigurationOptionsBuilder(out _) || ParameterNameMatches(p.Name!, suppliedArgumentNames)).ToList();
+                var matchingArgs = m.GetParameters().Skip(parameterSkip ?? 0).Where(p => p.IsConfigurationOptionsBuilder(out _) || ParameterNameMatches(p.Name!, suppliedArgumentNames)).ToList();
 
                 // Prefer the configuration method with most number of matching arguments and of those the ones with
                 // the most string type parameters to predict best match with least type casting
@@ -879,18 +890,18 @@ namespace ConfigurationProcessor.Core.Implementation
             selectedMethods = selectedMethods
                .Where(m =>
                {
-                  var requiredParamCount = m.GetParameters().Count(x => !x.IsOptional);
+                  var requiredParamCount = m.GetParameters().Skip(parameterSkip ?? 0).Count(x => !x.IsOptional);
                   return requiredParamCount <= suppliedArgumentNames.Count() + (m.IsStatic ? 1 : 0);
                })
                .ToList();
 
             if (selectedMethods.Count() > 1)
             {
-               selectedMethod = selectedMethods.OrderBy(m => m.IsStatic ? 1 : 0).ThenByDescending(m => m.GetParameters().Length).FirstOrDefault();
+               selectedMethod = selectedMethods.OrderBy(m => m.IsStatic ? 1 : 0).ThenByDescending(m => m.GetParameters().Skip(parameterSkip ?? 0).Count()).FirstOrDefault();
             }
             else
             {
-               selectedMethod = selectedMethods.SingleOrDefault() ?? candidateMethods.SingleOrDefault(m => !m.GetParameters().Skip(1).Any());
+               selectedMethod = selectedMethods.SingleOrDefault() ?? candidateMethods.SingleOrDefault(m => !m.GetParameters().Skip(1 + (parameterSkip ?? 0)).Any());
             }
          }
          else

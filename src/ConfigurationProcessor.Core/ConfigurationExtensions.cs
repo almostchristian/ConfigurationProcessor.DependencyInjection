@@ -37,13 +37,7 @@ namespace ConfigurationProcessor.Core
           MethodFilterFactory? methodFilterFactory = null,
           MethodInfo[]? additionalMethods = null)
           where TContext : class
-      {
-         if (configuration == null)
-         {
-            throw new ArgumentNullException(nameof(configuration));
-         }
-
-         configuration.ProcessConfiguration(
+         => configuration.ProcessConfiguration(
              context,
              options =>
              {
@@ -52,8 +46,6 @@ namespace ConfigurationProcessor.Core
                 options.AdditionalMethods = additionalMethods ?? Enumerable.Empty<MethodInfo>();
                 options.ContextPaths = contextPaths;
              });
-         return context;
-      }
 
       /// <summary>
       /// Processes the configuration.
@@ -65,21 +57,20 @@ namespace ConfigurationProcessor.Core
       /// <returns>The <paramref name="context"/> object for chaining.</returns>
       /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration"/> is null.</exception>
       public static TContext ProcessConfiguration<TContext>(
-          this IConfiguration configuration,
-          TContext context,
-          Action<ConfigurationReaderOptions> configureOptions)
-          where TContext : class
+        this IConfiguration configuration,
+        TContext context,
+        Action<ConfigurationReaderOptions> configureOptions)
+        where TContext : class
       {
          if (configuration == null)
          {
             throw new ArgumentNullException(nameof(configuration));
          }
 
-         context.AddFromConfiguration(
+         return context.AddFromConfiguration(
              configuration,
              AssemblyFinder.Auto(),
              configureOptions);
-         return context;
       }
 
       internal static TConfig AddFromConfiguration<TConfig>(

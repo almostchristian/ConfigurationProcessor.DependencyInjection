@@ -2,30 +2,13 @@
 // Copyright (c) Integrated Health Information Systems Pte Ltd. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
+using ConfigurationProcessor.Core;
 using ConfigurationProcessor.Core.Assemblies;
 using ConfigurationProcessor.Core.Implementation;
 using ConfigurationProcessor.DependencyInjection.UnitTests.Support;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
-/* Unmerged change from project 'ConfigurationProcessor.DependencyInjection.UnitTests (net462)'
-Before:
 using TestDummies;
-After:
-using System.Linq;
-using System.Reflection;
-using TestDummies;
-*/
-
-/* Unmerged change from project 'ConfigurationProcessor.DependencyInjection.UnitTests (netcoreapp3.1)'
-Before:
-using TestDummies;
-After:
-using System.Linq;
-using System.Reflection;
-using TestDummies;
-*/
-using System.Reflection;
 
 namespace ConfigurationProcessor.DependencyInjection.UnitTests
 {
@@ -44,6 +27,36 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
       }
 
       [Fact]
+      public void AddServicesWithContextPaths()
+      {
+         var configuration = JsonStringConfigSource.LoadConfiguration(@"
+{
+   'Services': {
+      'WithChildren': {
+         'SimpleString': 'helloworld'
+      }
+   },
+   'ComplexObject': true
+}");
+         IServiceCollection serviceCollection = new ServiceCollection();
+         configuration.ProcessConfiguration(serviceCollection, "Services", contextPaths: new string[] { "^ComplexObject", "WithChildren" });
+
+         Assert.Collection(
+             serviceCollection,
+             sd =>
+             {
+                Assert.Equal(typeof(ComplexObject), sd.ServiceType);
+                var config = Assert.IsType<ComplexObject>(sd.ImplementationInstance);
+             },
+             sd =>
+             {
+                Assert.Equal(typeof(SimpleValue<string>), sd.ServiceType);
+                var val = Assert.IsType<SimpleValue<string>>(sd.ImplementationInstance);
+                Assert.Equal("helloworld", val.Value);
+             });
+      }
+
+      [Fact]
       public void AddServicesSupportExpandedSyntaxWithoutArgs()
       {
          var json = @"
@@ -53,7 +66,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
     }]
 }";
 
-         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadConfigurationSection(json, "Services"));
 
          Assert.Collection(
              result,
@@ -70,7 +83,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
     }
 }";
 
-         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadConfigurationSection(json, "Services"));
 
          Assert.Collection(
              result,
@@ -90,7 +103,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
     }]
 }";
 
-         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadConfigurationSection(json, "Services"));
 
          Assert.Collection(
              result,
@@ -123,7 +136,7 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
     }
 }";
 
-         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadSection(json, "Services"));
+         var result = configurationReader.GetMethodCalls(JsonStringConfigSource.LoadConfigurationSection(json, "Services"));
 
          Assert.Collection(
              result,
