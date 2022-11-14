@@ -347,7 +347,7 @@ namespace ConfigurationProcessor.Core.Implementation
             var genericArgs = configType.GetGenericArguments();
             candidateMethods.AddRange(scannedTypes
                .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
-               .Where(m => m.GetParameters().Select(p => p.ParameterType).Take(genericArgs.Length).SequenceEqual(genericArgs)));
+               .Where(m => m.GetParameters().Select(p => p.ParameterType).Take(genericArgs.Length).Zip(genericArgs, (a, b) => (a, b)).All(values => values.a.IsAssignableFrom(values.b))));
          }
 
          if (typeArgs == null || typeArgs.Length == 0)
