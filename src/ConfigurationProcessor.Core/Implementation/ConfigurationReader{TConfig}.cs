@@ -14,7 +14,7 @@ namespace ConfigurationProcessor.Core.Implementation
         where TConfig : class
    {
       public ConfigurationReader(IConfiguration configuration, IConfigurationSection configSection, AssemblyFinder assemblyFinder, ConfigurationReaderOptions options)
-          : base(new ResolutionContext(assemblyFinder, configuration, configSection, options.AdditionalMethods, options.OnExtensionMethodNotFound, null, typeof(TConfig)), configuration, assemblyFinder, configSection)
+          : base(new ResolutionContext(assemblyFinder, configuration, configSection, options.AdditionalMethods, options.OnExtensionMethodNotFound, null, typeof(TConfig)), configuration, configSection)
       {
       }
 

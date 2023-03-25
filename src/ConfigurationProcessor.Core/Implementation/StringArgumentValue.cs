@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
@@ -85,6 +86,20 @@ namespace ConfigurationProcessor.Core.Implementation
          if (toType == typeof(TimeSpan) && decimal.TryParse(section.Value, out _))
          {
             throw new FormatException("Invalid conversion from numeric to TimeSpan. Only strings are allowed.");
+         }
+
+         // if the requested type is a single paramter Action and the value is True, we map it to a blank function
+         if (toTypeInfo.IsGenericType && toTypeInfo.GetGenericTypeDefinition() == typeof(Action<>) && bool.TryParse(argumentValue, out var boolvalue))
+         {
+            if (boolvalue)
+            {
+               var param = Expression.Parameter(toTypeInfo.GenericTypeArguments[0]);
+               return Expression.Lambda(Expression.Empty(), param).Compile();
+            }
+            else
+            {
+               return null;
+            }
          }
 
          if ((toTypeInfo.IsInterface || toTypeInfo.IsAbstract || typeof(Delegate).IsAssignableFrom(toType) || typeof(MethodInfo) == toType) && !string.IsNullOrWhiteSpace(argumentValue))

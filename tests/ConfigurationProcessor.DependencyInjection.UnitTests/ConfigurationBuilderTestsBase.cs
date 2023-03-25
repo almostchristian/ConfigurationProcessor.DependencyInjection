@@ -5,8 +5,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.ComponentModel;
-using System.Reflection;
 using TestDummies;
 using static ConfigurationProcessor.DependencyInjection.UnitTests.Support.Extensions;
 
@@ -290,6 +288,41 @@ namespace ConfigurationProcessor.DependencyInjection.UnitTests
          Assert.Collection(
              serviceCollection,
              sd => Assert.Equal(typeof(Dictionary<Type, Type>), sd.ServiceType));
+      }
+
+      [Fact]
+      public void WithObjectNotation_MapTypeActionDictionaryUsingObjectNotation_RegistersService()
+      {
+         var json = @$"
+{{
+   'DummyTypeActionMap': {{
+      '{NameOf<DummyTestClass>()}': true,
+      '{NameOf<DummyDelegate>()}': {{}},
+      '{NameOf<DummyParameter>()}': {{
+         'PropertyA': 42,
+         'PropertyB': 'hello',
+         'PropertyC': false,
+         'AppendString': 'abcd'
+      }}
+   }}
+}}";
+
+         var serviceCollection = ProcessJson(json);
+
+         var sp = serviceCollection.BuildServiceProvider();
+         var map = sp.GetService<Dictionary<Type, Action<SimpleObject>>>();
+         Assert.NotNull(map);
+         Action<SimpleObject> action;
+         Assert.True(map.TryGetValue(typeof(DummyTestClass), out action));
+         Assert.NotNull(action);
+         Assert.True(map.TryGetValue(typeof(DummyDelegate), out action));
+         Assert.Null(action);
+         Assert.True(map.TryGetValue(typeof(DummyParameter), out action));
+         Assert.NotNull(action);
+         var simpleObject = new SimpleObject();
+         action(simpleObject);
+         Assert.Equal(42, simpleObject.PropertyA);
+         Assert.Equal("helloabcd", simpleObject.PropertyB);
       }
 
       [Fact]

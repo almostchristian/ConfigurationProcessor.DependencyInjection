@@ -124,6 +124,18 @@ namespace TestDummies
          return services;
       }
 
+      public static IServiceCollection AddDummyTypeActionMap(this IServiceCollection services, Dictionary<Type, Action<SimpleObject>> configurations)
+      {
+         services.AddSingleton(configurations);
+         return services;
+      }
+
+      public static SimpleObject AppendString(this SimpleObject value, string toAppend)
+      {
+         value.PropertyB += toAppend;
+         return value;
+      }
+
       public static IServiceCollection AddDummyStringMap(this IServiceCollection services, Dictionary<string, string> mappings)
       {
          services.AddSingleton(mappings);
