@@ -5,11 +5,13 @@
    </PropertyGroup>
 
    <PropertyGroup>
-      <Version>1.11.0</Version>
+      <Version>1.12.0</Version>
+	  <License>MIT</License>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
       <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
       <Authors>almostchristian</Authors>
+	  <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
       <PackageProjectUrl>https://github.com/almostchristian/ConfigurationProcessor.DependencyInjection</PackageProjectUrl>
       <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
       <WarningsAsErrors />
@@ -23,6 +25,10 @@
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
       <PackageReleaseNotes>
+v1.12.0
+   - Specify license as Apache 2.0
+v1.11.0
+   - Added support for mapping to Dictionary&lt;T, Action&lt;TArg&gt;&gt;
 v1.10.0
    - Support Action delegates of any number of parameters as configuration targets.
 v1.9.0
