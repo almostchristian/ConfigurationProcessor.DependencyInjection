@@ -20,7 +20,6 @@
       <GenerateDocumentationFile>true</GenerateDocumentationFile>
       <IsPackable>true</IsPackable>
       <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-      <PackageLicenseFile>LICENSE</PackageLicenseFile>
       <Nullable>enable</Nullable>
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
