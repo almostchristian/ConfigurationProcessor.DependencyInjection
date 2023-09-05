@@ -18,13 +18,13 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 7.0.x
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:GIT_VERSION=${{github.sha}}
     - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal /p:TargetFrameworks=net6.0
+      run: dotnet test --configuration Release --no-build --verbosity normal
     - name: upload packages
       uses: actions/upload-artifact@v3
       with:
