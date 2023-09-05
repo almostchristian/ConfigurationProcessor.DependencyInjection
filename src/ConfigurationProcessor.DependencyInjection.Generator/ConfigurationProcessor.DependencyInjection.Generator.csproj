@@ -5,8 +5,9 @@
 	 <LangVersion>11</LangVersion>
 	 <ImplicitUsings>true</ImplicitUsings>
 	 <Nullable>enable</Nullable>
-	 <PackageVersion>0.1.0-beta.3</PackageVersion>
+	 <PackageVersion>0.1.0-beta.4</PackageVersion>
 	 <PackageTags>$(PackageTags);source generation</PackageTags>
+	 <DefineConstants>Generator</DefineConstants>
   </PropertyGroup>
 
    <ItemGroup>
@@ -17,6 +18,7 @@
 	  <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
+	  <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="System.Text.Json" Version="7.0.3" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="System.Reflection.MetadataLoadContext" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
    </ItemGroup>
@@ -29,6 +31,14 @@
 	  <None Include="$(PKGMicrosoft_Extensions_Configuration_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.Configuration.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGMicrosoft_Extensions_Configuration)\lib\netstandard2.0\Microsoft.Extensions.Configuration.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGMicrosoft_Extensions_FileProviders_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.FileProviders.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGMicrosoft_Extensions_FileProviders_Physical)\lib\netstandard2.0\Microsoft.Extensions.FileProviders.Physical.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGSystem_Reflection_MetadataLoadContext)\lib\netstandard2.0\System.Reflection.MetadataLoadContext.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+   </ItemGroup>
+
+   <ItemGroup>
+	  <None Include="README.md">
+		 <Pack>True</Pack>
+		 <PackagePath>\</PackagePath>
+	  </None>
    </ItemGroup>
 </Project>
