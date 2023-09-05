@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Text;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection.Utility;
+namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 
 internal record class EmitContext(string Namespace, List<Assembly> References)
 {

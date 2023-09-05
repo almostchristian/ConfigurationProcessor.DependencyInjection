@@ -90,8 +90,8 @@ v1.0.0
       <NoWarn>$(NoWarn);CA1062</NoWarn>
    </PropertyGroup>
 
-   <PropertyGroup Condition="'$(TargetFramework)'!='net6.0'">
-      <LangVersion>10.0</LangVersion>
+   <PropertyGroup>
+      <LangVersion>11</LangVersion>
    </PropertyGroup>
 
    <ItemGroup>

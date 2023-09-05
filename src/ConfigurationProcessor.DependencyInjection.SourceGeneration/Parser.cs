@@ -1,46 +1,46 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
-using ConfigurationProcessor.Gen.DependencyInjection.Parsing;
-using ConfigurationProcessor.Gen.DependencyInjection.Utility;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection;
+namespace ConfigurationProcessor.DependencyInjection.SourceGeneration;
 
 internal class Parser
 {
     internal const string DefaultConfigurationFile = "appsettings.json";
     internal const string GenerateServiceRegistrationAttribute = "ConfigurationProcessor.DependencyInjection.GenerateServiceRegistrationAttribute";
     internal const string ServiceCollectionTypeName = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
-    private readonly Compilation compilation;
+    private readonly GeneratorExecutionContext context;
     private readonly Action<Diagnostic> reportDiagnostic;
     private readonly CancellationToken cancellationToken;
 
-    public Parser(Compilation compilation, Action<Diagnostic> reportDiagnostic, CancellationToken cancellationToken)
+    public Parser(GeneratorExecutionContext context, Action<Diagnostic> reportDiagnostic, CancellationToken cancellationToken)
     {
-        this.compilation = compilation;
+        this.context = context;
         this.reportDiagnostic = reportDiagnostic;
         this.cancellationToken = cancellationToken;
     }
 
     internal IReadOnlyList<ServiceRegistrationClass> GetServiceRegistrationClasses(IEnumerable<ClassDeclarationSyntax> classes)
     {
-        INamedTypeSymbol? generateServiceRegistrationAttribute = compilation.GetBestTypeByMetadataName(GenerateServiceRegistrationAttribute);
+        INamedTypeSymbol? generateServiceRegistrationAttribute = context.Compilation.GetBestTypeByMetadataName(GenerateServiceRegistrationAttribute);
         if (generateServiceRegistrationAttribute == null)
         {
             // nothing to do if this type isn't available
             return Array.Empty<ServiceRegistrationClass>();
         }
 
-        INamedTypeSymbol? serviceCollectionSymbol = compilation.GetBestTypeByMetadataName(ServiceCollectionTypeName);
+        INamedTypeSymbol? serviceCollectionSymbol = context.Compilation.GetBestTypeByMetadataName(ServiceCollectionTypeName);
         if (serviceCollectionSymbol == null)
         {
             // nothing to do if this type isn't available
             return Array.Empty<ServiceRegistrationClass>();
         }
 
-        INamedTypeSymbol? configurationSymbol = compilation.GetBestTypeByMetadataName("Microsoft.Extensions.Configuration.IConfiguration");
+        INamedTypeSymbol? configurationSymbol = context.Compilation.GetBestTypeByMetadataName("Microsoft.Extensions.Configuration.IConfiguration");
         if (configurationSymbol == null)
         {
             // nothing to do if this type isn't available
@@ -55,7 +55,7 @@ internal class Parser
         foreach (IGrouping<SyntaxTree, ClassDeclarationSyntax> group in classes.GroupBy(x => x.SyntaxTree))
         {
             SyntaxTree syntaxTree = group.Key;
-            SemanticModel sm = compilation.GetSemanticModel(syntaxTree);
+            SemanticModel sm = context.Compilation.GetSemanticModel(syntaxTree);
 
             foreach (ClassDeclarationSyntax classDec in group)
             {
@@ -170,7 +170,20 @@ internal class Parser
                                 break;
                             }
 
-                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, string.Join(", ", configurationMethodSymbol.Parameters.Select(ToDisplay)), method.Modifiers.ToString(), configurationFile ?? DefaultConfigurationFile, configurationSection, method.GetLocation());
+                            var configFile = configurationFile ?? DefaultConfigurationFile;
+                            IDictionary<string, string?> configurationValues;
+                            var jsonFile = context.AdditionalFiles.FirstOrDefault(x => Path.GetFileName(x.Path) == configFile);
+                            if (jsonFile == null)
+                            {
+                                Diag(DiagnosticDescriptors.ConfigurationFileNotFound, method.GetLocation(), configFile);
+                                continue;
+                            }
+                            else
+                            {
+                                configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFile.Path));
+                            }
+
+                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, string.Join(", ", configurationMethodSymbol.Parameters.Select(ToDisplay)), method.Modifiers.ToString(), configurationValues, configurationSection);
 
                             static string ToDisplay(IParameterSymbol parameter)
                             {
@@ -481,7 +494,7 @@ internal class Parser
             static object? GetItem(TypedConstant arg) => arg.Kind == TypedConstantKind.Array ? arg.Values : arg.Value;
         }
 
-        if (results.Count > 0 && compilation is CSharpCompilation { LanguageVersion: LanguageVersion version and < LanguageVersion.CSharp8 })
+        if (results.Count > 0 && context.Compilation is CSharpCompilation { LanguageVersion: LanguageVersion version and < LanguageVersion.CSharp8 })
         {
             // we only support C# 8.0 and above
             Diag(DiagnosticDescriptors.GenerateConfigurationUnsupportedLanguageVersion, null, version.ToDisplayString(), LanguageVersion.CSharp8.ToDisplayString());
@@ -535,7 +548,7 @@ internal class Parser
 
     private bool IsBaseOrIdentity(ITypeSymbol source, ITypeSymbol dest)
     {
-        Conversion conversion = compilation.ClassifyConversion(source, dest);
+        Conversion conversion = context.Compilation.ClassifyConversion(source, dest);
         return conversion.IsIdentity || (conversion.IsReference && conversion.IsImplicit);
     }
 }

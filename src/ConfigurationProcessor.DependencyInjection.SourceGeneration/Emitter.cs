@@ -1,34 +1,24 @@
 ﻿using System.Reflection;
-using ConfigurationProcessor.Gen.DependencyInjection.Parsing;
-using ConfigurationProcessor.Gen.DependencyInjection.Utility;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection;
+namespace ConfigurationProcessor.DependencyInjection.SourceGeneration;
 
 internal class Emitter
 {
-    private GeneratorExecutionContext context;
-    private readonly Action<Diagnostic> reportDiagnostic;
-
-    public Emitter(GeneratorExecutionContext context, Action<Diagnostic> reportDiagnostic)
+    public string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
     {
-        this.context = context;
-        this.reportDiagnostic = reportDiagnostic;
-    }
-
-    public string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, CancellationToken cancellationToken)
-    {
-        var paths = context.Compilation.ExternalReferences.Select(x => x.Display!).ToList();
-        var resolver = new PathAssemblyResolver(paths);
-        var mlc = new MetadataLoadContext(resolver);
-
-        var references = context.Compilation.ExternalReferences.Select(x => mlc.LoadFromAssemblyPath(x.Display!)).ToList();
-
         var emitContext = new EmitContext(generateConfigurationClasses.First().Namespace, references);
 
         foreach (var configClass in generateConfigurationClasses)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
             emitContext.Write($@"
 namespace {configClass.Namespace}
 {{
@@ -40,14 +30,6 @@ namespace {configClass.Namespace}
             foreach (var configMethod in configClass.Methods)
             {
                 var sectionName = configMethod.ConfigurationSectionName;
-                var configFile = configMethod.FileName;
-
-                var jsonFile = context.AdditionalFiles.FirstOrDefault(x => Path.GetFileName(x.Path) == configFile);
-                if (jsonFile == null)
-                {
-                    Diag(DiagnosticDescriptors.ConfigurationFileNotFound, configMethod.Location, configMethod.FileName);
-                    continue;
-                }
 
                 string configSectionVariableName = "servicesSection";
 
@@ -62,7 +44,7 @@ namespace {configClass.Namespace}
    }}");
 
                 emitContext.IncreaseIndent();
-                BuildMethods(emitContext, jsonFile.Path, sectionName, configMethod.ServiceCollectionField!, configSectionVariableName);
+                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.ServiceCollectionField!, configSectionVariableName);
                 emitContext.DecreaseIndent();
                 emitContext.Write("}");
             }
@@ -78,10 +60,10 @@ namespace {configClass.Namespace}
         return emitContext.ToString();
     }
 
-    private void BuildMethods(EmitContext emitContext, string jsonFilePath, string sectionName, string targetExpression, string configSectionVariableName)
+    private void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string configSectionVariableName)
     {
         var configBuilder = new ConfigurationBuilder();
-        configBuilder.AddJsonFile(jsonFilePath);
+        configBuilder.AddInMemoryCollection(configurationValues);
         var config = configBuilder.Build();
 
         var directive = config.GetSection(sectionName);
@@ -94,10 +76,5 @@ namespace {configClass.Namespace}
             configSectionVariableName,
             Parser.ServiceCollectionTypeName,
             serviceCollectionParameterName);
-    }
-
-    private void Diag(DiagnosticDescriptor desc, Location? location, params object?[]? messageArgs)
-    {
-        reportDiagnostic(Diagnostic.Create(desc, location, messageArgs));
     }
 }

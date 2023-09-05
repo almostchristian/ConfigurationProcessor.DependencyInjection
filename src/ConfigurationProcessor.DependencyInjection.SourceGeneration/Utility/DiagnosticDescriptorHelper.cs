@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection.Utility;
+namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 
 /// <summary>
 /// Helper methods for creating <see cref="DiagnosticDescriptor"/> instances.

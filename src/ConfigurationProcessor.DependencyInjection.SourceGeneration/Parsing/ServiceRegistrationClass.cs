@@ -1,4 +1,4 @@
-﻿namespace ConfigurationProcessor.Gen.DependencyInjection.Parsing;
+﻿namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
 
 internal sealed class ServiceRegistrationClass
 {

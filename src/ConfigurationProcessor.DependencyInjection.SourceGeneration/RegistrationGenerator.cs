@@ -2,19 +2,21 @@
 // Copyright (c) almostchristian. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
+using System.Reflection;
 using System.Text;
-using ConfigurationProcessor.Gen.DependencyInjection.Parsing;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection;
+namespace ConfigurationProcessor;
 
 /// <summary>
 /// Generates method for registration based on an appsetting.json file.
 /// </summary>
 [Generator]
-public class ConfigurationRegistrationGenerator : ISourceGenerator
+public class RegistrationGenerator : ISourceGenerator
 {
     /// <inheritdoc/>
     public void Initialize(GeneratorInitializationContext context)
@@ -35,12 +37,17 @@ public class ConfigurationRegistrationGenerator : ISourceGenerator
         System.Diagnostics.Debugger.Launch();
 #endif
 
-        var p = new Parser(context.Compilation, context.ReportDiagnostic, context.CancellationToken);
+        var p = new Parser(context, context.ReportDiagnostic, context.CancellationToken);
         IReadOnlyList<ServiceRegistrationClass> registrationClasses = p.GetServiceRegistrationClasses(receiver.ClassDeclarations);
         if (registrationClasses.Count > 0)
         {
-            var e = new Emitter(context, context.ReportDiagnostic);
-            string result = e.Emit(registrationClasses, context.CancellationToken);
+            var paths = context.Compilation.ExternalReferences.Select(x => x.Display!).ToList();
+            var resolver = new PathAssemblyResolver(paths);
+            var mlc = new MetadataLoadContext(resolver);
+            var references = context.Compilation.ExternalReferences.Select(x => mlc.LoadFromAssemblyPath(x.Display!)).ToList();
+
+            var e = new Emitter();
+            string result = e.Emit(registrationClasses, references, context.CancellationToken);
 
             context.AddSource("RegisterServices.g.cs", SourceText.From(result, Encoding.UTF8));
         }
