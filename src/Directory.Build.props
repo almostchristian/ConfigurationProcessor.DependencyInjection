@@ -24,6 +24,8 @@
       <PackageTags>dependencyinjection;configuration;ioc;di;</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>
       <PackageReleaseNotes>
+v1.13.0
+   - Refactor code to support source generation package
 v1.12.0
    - Specify license as Apache 2.0
 v1.11.0
