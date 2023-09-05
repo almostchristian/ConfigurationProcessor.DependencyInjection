@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection.Utility;
+namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 
 internal static class DiagnosticDescriptors
 {

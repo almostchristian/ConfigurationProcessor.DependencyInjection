@@ -1,5 +1,5 @@
 ﻿using System.Reflection;
-using ConfigurationProcessor.Gen.DependencyInjection.Utility;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor.Core.Implementation;

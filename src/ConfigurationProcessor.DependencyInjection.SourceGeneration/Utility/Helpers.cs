@@ -1,12 +1,10 @@
-﻿using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using ConfigurationProcessor.Core.Implementation;
-using ConfigurationProcessor.Gen.DependencyInjection.Parsing;
+using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
-using static System.Collections.Specialized.BitVector32;
 
-namespace ConfigurationProcessor.Gen.DependencyInjection.Utility;
+namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
 
 internal static class Helpers
 {
