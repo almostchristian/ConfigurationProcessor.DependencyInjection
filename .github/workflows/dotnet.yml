@@ -26,7 +26,7 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:GIT_VERSION=${{github.sha}}
     - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal /p:TargetFrameworks=net6.0
+      run: dotnet test --configuration Release --no-build --verbosity normal
     - name: upload packages
       uses: actions/upload-artifact@v3
       with:
