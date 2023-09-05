@@ -36,7 +36,7 @@
 	  <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="System.Reflection.MetadataLoadContext" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
-	  <PackageReference Include="System.Text.Json" Version="7.0.2" GeneratePathProperty="true" PrivateAssets="all" />
+	  <PackageReference Include="System.Text.Json" Version="7.0.3" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Primitives" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
    </ItemGroup>
 

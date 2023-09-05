@@ -5,29 +5,27 @@
 	 <LangVersion>11</LangVersion>
 	 <ImplicitUsings>true</ImplicitUsings>
 	 <Nullable>enable</Nullable>
-	 <PackageVersion>0.1.0-beta.1</PackageVersion>
+	 <PackageVersion>0.1.0-beta.2</PackageVersion>
   </PropertyGroup>
 
    <ItemGroup>
-     <ProjectReference
-		Include="..\ConfigurationProcessor.Gen.DependencyInjection\ConfigurationProcessor.Gen.DependencyInjection.csproj"
-		ReferenceOutputAssembly="false"
-        OutputItemType="Analyzer"
-		PackAsAnalyzer="true" />
+     <ProjectReference Include="..\ConfigurationProcessor.Gen.DependencyInjection\ConfigurationProcessor.Gen.DependencyInjection.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" PackAsAnalyzer="true" />
 
 	  <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
-	  <PackageReference Include="System.Text.Json" Version="7.0.2" GeneratePathProperty="true" PrivateAssets="all" />
+	  <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
+	  <PackageReference Include="System.Text.Json" Version="7.0.3" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="System.Reflection.MetadataLoadContext" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
    </ItemGroup>
 
    <ItemGroup>
 	  <None Include="$(AssemblyName).targets" Pack="true" PackagePath="build" />
-	  <None Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll" Pack="true" PackagePath="analyzers/dotnet/cs"/>
-	  <None Include="$(PKGMicrosoft_Extensions_Configuration_Json)\lib\netstandard2.0\Microsoft.Extensions.Configuration.Json.dll" Pack="true" PackagePath="analyzers/dotnet/cs"/>
-	  <None Include="$(PKGMicrosoft_Extensions_Configuration_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.Configuration.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs"/>
-	  <None Include="$(PKGMicrosoft_Extensions_Configuration)\lib\netstandard2.0\Microsoft.Extensions.Configuration.dll" Pack="true" PackagePath="analyzers/dotnet/cs"/>
-	  <None Include="$(PKGSystem_Reflection_MetadataLoadContext)\lib\netstandard2.0\System.Reflection.MetadataLoadContext.dll" Pack="true" PackagePath="analyzers/dotnet/cs"/>
+	  <None Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\System.Text.Json.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGMicrosoft_Extensions_Configuration_Json)\lib\netstandard2.0\Microsoft.Extensions.Configuration.Json.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGMicrosoft_Extensions_Configuration_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.Configuration.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGMicrosoft_Extensions_Configuration)\lib\netstandard2.0\Microsoft.Extensions.Configuration.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGMicrosoft_Extensions_FileProviders_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.FileProviders.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGSystem_Reflection_MetadataLoadContext)\lib\netstandard2.0\System.Reflection.MetadataLoadContext.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
    </ItemGroup>
 </Project>
