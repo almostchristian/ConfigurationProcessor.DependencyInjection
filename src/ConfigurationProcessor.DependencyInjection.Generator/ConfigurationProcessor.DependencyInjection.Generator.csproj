@@ -5,7 +5,7 @@
 	 <LangVersion>11</LangVersion>
 	 <ImplicitUsings>true</ImplicitUsings>
 	 <Nullable>enable</Nullable>
-	 <PackageVersion>0.1.0-beta.4</PackageVersion>
+	 <PackageVersion>0.1.0-beta.5</PackageVersion>
 	 <PackageTags>$(PackageTags);source generation</PackageTags>
 	 <DefineConstants>Generator</DefineConstants>
   </PropertyGroup>
@@ -13,6 +13,7 @@
    <ItemGroup>
      <ProjectReference Include="..\ConfigurationProcessor.Gen.DependencyInjection\ConfigurationProcessor.Gen.DependencyInjection.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" PackAsAnalyzer="true" />
 
+	  <PackageReference Include="Microsoft.Extensions.Primitives" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
@@ -30,6 +31,7 @@
 	  <None Include="$(PKGMicrosoft_Extensions_Configuration_FileExtensions)\lib\netstandard2.0\Microsoft.Extensions.Configuration.FileExtensions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGMicrosoft_Extensions_Configuration_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.Configuration.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGMicrosoft_Extensions_Configuration)\lib\netstandard2.0\Microsoft.Extensions.Configuration.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+	  <None Include="$(PKGMicrosoft_Extensions_Primitives)\lib\netstandard2.0\Microsoft.Extensions.Primitives.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGMicrosoft_Extensions_FileProviders_Abstractions)\lib\netstandard2.0\Microsoft.Extensions.FileProviders.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGMicrosoft_Extensions_FileProviders_Physical)\lib\netstandard2.0\Microsoft.Extensions.FileProviders.Physical.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
 	  <None Include="$(PKGSystem_Reflection_MetadataLoadContext)\lib\netstandard2.0\System.Reflection.MetadataLoadContext.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
