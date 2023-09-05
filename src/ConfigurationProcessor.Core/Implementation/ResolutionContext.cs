@@ -86,7 +86,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
       public IReadOnlyCollection<Assembly> ConfigurationAssemblies { get; set; }
 
-      public TypeResolver GetType(string typeName, IConfiguration rootConfiguration, IConfiguration ambientConfiguration)
+      public TypeResolver CreateTypeResolver(string typeName, IConfiguration rootConfiguration, IConfiguration ambientConfiguration)
       {
          if (typeName[0] == '!' || typeName[0] == '@')
          {
@@ -100,7 +100,7 @@ namespace ConfigurationProcessor.Core.Implementation
 #endif
                {
                   var split = newTypeName.Split('@');
-                  return ReflectionUtil.CreateType(split[0], GetType(split[1], rootConfiguration, ambientConfiguration)(method, argIndex));
+                  return ReflectionUtil.CreateType(split[0], CreateTypeResolver(split[1], rootConfiguration, ambientConfiguration)(method, argIndex));
                }
                else
                {
