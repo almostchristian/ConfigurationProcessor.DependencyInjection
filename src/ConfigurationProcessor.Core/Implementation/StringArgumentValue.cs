@@ -22,7 +22,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
       private static readonly Dictionary<Type, Func<string, ResolutionContext, object>> ExtendedTypeConversions = new Dictionary<Type, Func<string, ResolutionContext, object>>
         {
-            { typeof(Type), (s, c) => c.GetType(s, c.RootConfiguration, c.AppConfiguration)(default, 0) },
+            { typeof(Type), (s, c) => c.CreateTypeResolver(s, c.RootConfiguration, c.AppConfiguration)(default, 0) },
             { typeof(Assembly), (s, c) => c.FindAssembly(s)! },
         };
 
@@ -108,7 +108,7 @@ namespace ConfigurationProcessor.Core.Implementation
             // like "Namespace.TypeName::StaticProperty, AssemblyName"
             if (TryParseStaticMemberAccessor(argumentValue, out var accessorTypeName, out var memberName))
             {
-               var accessorType = resolutionContext.GetType(accessorTypeName, resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(configurationMethod, 0);
+               var accessorType = resolutionContext.CreateTypeResolver(accessorTypeName, resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(configurationMethod, 0);
 
                // if delegate, look for a method and then construct a delegate
                if (typeof(Delegate).IsAssignableFrom(toType) || typeof(MethodInfo) == toType)
@@ -173,7 +173,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
             // maybe it's the assembly-qualified type name of a concrete implementation
             // with a default constructor
-            var type = resolutionContext.GetType(argumentValue.Trim(), resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(configurationMethod, 0);
+            var type = resolutionContext.CreateTypeResolver(argumentValue.Trim(), resolutionContext.RootConfiguration, resolutionContext.AppConfiguration)(configurationMethod, 0);
 
             var ctor = type.GetTypeInfo().DeclaredConstructors.FirstOrDefault(ci =>
             {
