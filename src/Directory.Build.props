@@ -6,9 +6,17 @@
 
    <PropertyGroup>
       <Version>1.12.0</Version>
+      <PackageVersion>$(Version)</PackageVersion>
+   </PropertyGroup>
+
+   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Generator')) OR $(MSBuildProjectName.EndsWith('.SourceGeneration'))">
+	  <Version>0.2.1</Version>
+	  <PackageVersion>$(Version)-beta.1</PackageVersion>
+   </PropertyGroup>
+
+   <PropertyGroup>
 	  <License>MIT</License>
       <FileVersion>$(Version).$([System.DateTime]::Now.ToString(yy))$([System.DateTime]::Now.DayOfYear.ToString(000))</FileVersion>
-      <PackageVersion>$(Version)</PackageVersion>
       <InformationalVersion>$(FileVersion)-$(GIT_VERSION)</InformationalVersion>
       <Authors>almostchristian</Authors>
 	  <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

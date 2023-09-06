@@ -172,15 +172,23 @@ internal class Parser
 
                             var configFile = configurationFile ?? DefaultConfigurationFile;
                             IDictionary<string, string?> configurationValues;
-                            var jsonFile = context.AdditionalFiles.FirstOrDefault(x => Path.GetFileName(x.Path) == configFile);
-                            if (jsonFile == null)
+                            var jsonFilePath = context.AdditionalFiles.FirstOrDefault(x => Path.GetFileName(x.Path) == configFile)?.Path;
+
+                            if (jsonFilePath == null &&
+                                context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.projectdir", out var projectDir) &&
+                                File.Exists(Path.Combine(projectDir, configFile)))
+                            {
+                                jsonFilePath = Path.Combine(projectDir, configFile);
+                            }
+
+                            if (jsonFilePath == null)
                             {
                                 Diag(DiagnosticDescriptors.ConfigurationFileNotFound, method.GetLocation(), configFile);
                                 continue;
                             }
                             else
                             {
-                                configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFile.Path));
+                                configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFilePath));
                             }
 
                             var methodSignature = string.Join(", ", configurationMethodSymbol.Parameters.Select(ToDisplay));
