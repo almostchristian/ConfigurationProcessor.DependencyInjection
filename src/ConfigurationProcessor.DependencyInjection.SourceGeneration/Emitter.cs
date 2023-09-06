@@ -7,7 +7,7 @@ namespace ConfigurationProcessor.DependencyInjection.SourceGeneration;
 
 internal class Emitter
 {
-    public const string VersionString = "0.2.0";
+    public static readonly string VersionString = typeof(Emitter).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
 
     public string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
     {
