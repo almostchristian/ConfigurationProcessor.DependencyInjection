@@ -1,13 +1,14 @@
 ﻿using System.Reflection;
 using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
 using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
-using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor.DependencyInjection.SourceGeneration;
 
 internal class Emitter
 {
+    public const string VersionString = "0.2.0";
+
     public string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
     {
         var emitContext = new EmitContext(generateConfigurationClasses.First().Namespace, references);
@@ -19,11 +20,12 @@ internal class Emitter
                 break;
             }
 
-            emitContext.Write($@"
-namespace {configClass.Namespace}
-{{
-   static partial class {configClass.Name}
-   {{");
+            emitContext.Write($$"""
+                namespace {{configClass.Namespace}}
+                {
+                   static partial class {{configClass.Name}}
+                   {
+                """);
 
             emitContext.IncreaseIndent();
             emitContext.IncreaseIndent();
@@ -33,15 +35,16 @@ namespace {configClass.Namespace}
 
                 string configSectionVariableName = "servicesSection";
 
-                emitContext.Write(
-                    $@"[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""ConfigurationProcessor.DependencyInjection.Generator"", ""0.1.0"")]
-{configMethod.Modifiers} void {configMethod.Name}(this {configMethod.Arguments})
-{{
-   var {configSectionVariableName} = {configMethod.ConfigurationField}.GetSection(""{sectionName}"");
-   if (!{configSectionVariableName}.Exists())
-   {{
-      return;
-   }}");
+                emitContext.Write($$"""
+                    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("ConfigurationProcessor.DependencyInjection.Generator", "{{VersionString}}")]
+                    {{configMethod.Modifiers}} void {{configMethod.Name}}({{configMethod.Arguments}})
+                    {
+                       var {{configSectionVariableName}} = {{configMethod.ConfigurationField}}.GetSection("{{sectionName}}");
+                       if (!{{configSectionVariableName}}.Exists())
+                       {
+                          return;
+                       }
+                    """);
 
                 emitContext.IncreaseIndent();
                 BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.ServiceCollectionField!, configSectionVariableName);

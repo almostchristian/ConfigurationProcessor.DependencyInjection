@@ -183,7 +183,13 @@ internal class Parser
                                 configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFile.Path));
                             }
 
-                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, string.Join(", ", configurationMethodSymbol.Parameters.Select(ToDisplay)), method.Modifiers.ToString(), configurationValues, configurationSection);
+                            var methodSignature = string.Join(", ", configurationMethodSymbol.Parameters.Select(ToDisplay));
+                            if (configurationMethodSymbol.IsExtensionMethod)
+                            {
+                                methodSignature = "this " + methodSignature;
+                            }
+
+                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, methodSignature, method.Modifiers.ToString(), configurationValues, configurationSection);
 
                             static string ToDisplay(IParameterSymbol parameter)
                             {

@@ -29,8 +29,15 @@ internal record class EmitContext(string Namespace, List<Assembly> References)
         var split = lines.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
         foreach (var line in split)
         {
-            StringBuilder.Append(currentIndent);
-            StringBuilder.AppendLine(line);
+            if (string.IsNullOrEmpty(line))
+            {
+                StringBuilder.AppendLine();
+            }
+            else
+            {
+                StringBuilder.Append(currentIndent);
+                StringBuilder.AppendLine(line);
+            }
         }
     }
 
@@ -46,6 +53,7 @@ internal record class EmitContext(string Namespace, List<Assembly> References)
                 ns);
         }
 
+        sb.AppendLine();
         sb.AppendLine(StringBuilder.ToString());
 
         foreach (var classDefinition in createdTypes)
