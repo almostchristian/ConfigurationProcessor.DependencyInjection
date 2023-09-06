@@ -5,9 +5,10 @@
 	 <LangVersion>11</LangVersion>
 	 <ImplicitUsings>true</ImplicitUsings>
 	 <Nullable>enable</Nullable>
-	 <PackageVersion>0.1.0-beta.6</PackageVersion>
+	 <PackageVersion>0.2.0-beta.1</PackageVersion>
 	 <PackageTags>$(PackageTags);source generation</PackageTags>
 	 <DefineConstants>Generator</DefineConstants>
+	 <Description>This packages uses source generation to generate dependency injection registration methods based on the `appsettings.config` configuration. This is still in beta and the current version partially supports the configuration mechanisms available in the ConfigurationProcessor.DependencyInjection package.</Description>
   </PropertyGroup>
 
    <ItemGroup>

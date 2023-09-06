@@ -83,7 +83,39 @@ namespace ConfigurationProcessor.Core.Implementation
             return convertor(argumentValue, resolutionContext);
          }
 
-         if (toType == typeof(TimeSpan) && decimal.TryParse(section.Value, out _))
+         if (toType.IsGenericType && toType.GetGenericTypeDefinition() == typeof(Nullable<>) && string.IsNullOrEmpty(argumentValue))
+         {
+             return default;
+         }
+         else if (toType == typeof(int) || toType == typeof(int?))
+         {
+             return int.Parse(argumentValue);
+         }
+         else if (toType == typeof(uint) || toType == typeof(uint?))
+         {
+             return uint.Parse(argumentValue);
+         }
+         else if (toType == typeof(long) || toType == typeof(long?))
+         {
+             return long.Parse(argumentValue);
+         }
+         else if (toType == typeof(ulong) || toType == typeof(ulong?))
+         {
+             return ulong.Parse(argumentValue);
+         }
+         else if (toType == typeof(float) || toType == typeof(float?))
+         {
+             return float.Parse(argumentValue);
+         }
+         else if (toType == typeof(double) || toType == typeof(double?))
+         {
+             return double.Parse(argumentValue);
+         }
+         else if (toType == typeof(decimal) || toType == typeof(decimal?))
+         {
+             return decimal.Parse(argumentValue);
+         }
+         else if (toType == typeof(TimeSpan) && decimal.TryParse(section.Value, out _))
          {
             throw new FormatException("Invalid conversion from numeric to TimeSpan. Only strings are allowed.");
          }

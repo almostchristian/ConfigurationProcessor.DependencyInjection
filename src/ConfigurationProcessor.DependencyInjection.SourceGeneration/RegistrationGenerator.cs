@@ -33,10 +33,6 @@ public class RegistrationGenerator : ISourceGenerator
             return;
         }
 
-#if DEBUG
-        System.Diagnostics.Debugger.Launch();
-#endif
-
         var p = new Parser(context, context.ReportDiagnostic, context.CancellationToken);
         IReadOnlyList<ServiceRegistrationClass> registrationClasses = p.GetServiceRegistrationClasses(receiver.ClassDeclarations);
         if (registrationClasses.Count > 0)

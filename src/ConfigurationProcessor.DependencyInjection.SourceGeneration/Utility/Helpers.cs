@@ -113,46 +113,64 @@ internal static class Helpers
 
     public static void EmitComplex(
         this EmitContext emitContext,
-        List<MethodInfo> configMethods,
+        MethodInfo chosenMethod,
         string configSectionVariableName,
         string configKey,
         string targetVariableName,
         IConfigurationSection configSection,
         string newSectionName,
         string parentSectionName,
-        IConfiguration rootConfiguration)
+        IConfiguration rootConfiguration,
+        Dictionary<string, IConfigurationSection> paramArgs)
     {
-        // for this, we need to prefer the extension method with the Action<T> parameter
-        var chosenMethod = configMethods.Single();
-        emitContext.Write(
-            $@"
-var {newSectionName} = {configSectionVariableName}.GetSection(""{configKey}"");
-if ({newSectionName}.Exists())
-{{
-   {targetVariableName}.{chosenMethod?.GetNameWithGenericArguments() ?? configKey}(options =>
-   {{");
+        var methodName = chosenMethod.GetNameWithGenericArguments() ?? configKey;
+        emitContext.AddNamespace(chosenMethod.DeclaringType.Namespace);
 
-        emitContext.IncreaseIndent();
-        emitContext.IncreaseIndent();
+        // we check if this is an extension method and get the non extension parameter type
+        var paramType = chosenMethod.IsStatic ? chosenMethod.GetParameters()[1].ParameterType : chosenMethod.GetParameters()[0].ParameterType;
 
-        if (chosenMethod != null)
+        if (string.IsNullOrEmpty(configSection.Value))
         {
-            emitContext.AddNamespace(chosenMethod.DeclaringType.Namespace);
-            emitContext.EmitValues(rootConfiguration, configSection, configKey, newSectionName, chosenMethod.GetParameters()[1].ParameterType.GetGenericArguments()[0].FullName, "options");
+            emitContext.Write($$"""
+
+            var {{newSectionName}} = {{configSectionVariableName}}.GetSection("{{configKey}}");
+            if ({{newSectionName}}.Exists())
+            {
+            """);
+            emitContext.IncreaseIndent();
+
+            // we check if this is an extension method with the Action<T> parameter
+            if (paramType!.IsGenericType && paramType.BaseType?.FullName == typeof(MulticastDelegate).FullName)
+            {
+                emitContext.Write($$"""
+                    {{targetVariableName}}.{{methodName}}(options =>
+                    {
+                    """);
+                emitContext.IncreaseIndent();
+                emitContext.EmitValues(rootConfiguration, configSection, configKey, newSectionName, paramType.GetGenericArguments()[0].FullName, "options");
+                emitContext.DecreaseIndent();
+                emitContext.Write("});");
+            }
+            else
+            {
+                if ((paramType == typeof(string) || paramType.IsValueType) && paramArgs.Count == 1)
+                {
+                    emitContext.Write($"{targetVariableName}.{methodName}({newSectionName}.GetValue<{paramType.GetCSharpFullName()}>(\"{paramArgs.Keys.Single()}\"));");
+                }
+                else
+                {
+                    emitContext.Write($"{targetVariableName}.{methodName}({newSectionName}.Get<{paramType.GetCSharpFullName()}>());");
+                }
+            }
+
+            emitContext.DecreaseIndent();
+            emitContext.Write("}");
         }
         else
         {
-            var childValues = configSection.CleanUpKeys($"{parentSectionName}:{configKey}");
-            foreach ((string key, string? value) in childValues)
-            {
-                emitContext.Write($@"// options.{key} = {newSectionName}.GetValue<string>(""{key}"");");
-            }
+            emitContext.Write(string.Empty);
+            emitContext.Write($"{targetVariableName}.{methodName}({configSectionVariableName}.GetValue<{paramType.GetCSharpFullName()}>(\"{configKey}\"));");
         }
-
-        emitContext.DecreaseIndent();
-        emitContext.DecreaseIndent();
-        emitContext.Write(@"   });
-}");
     }
 
     public static void EmitSimpleBoolean(
@@ -352,7 +370,7 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                     if (propertyInfo.PropertyType.GetProperty(param.Key) is PropertyInfo subProperty)
                     {
                         emitContext.Write(
-                            $@"{targetVariableName}.{propertyInfo.Name}.{subProperty.Name} = {configSectionVariableName}.GetValue<{subProperty.PropertyType.FullName}>(""{param.Value.ConfigSection.Key}"");");
+                            $@"{targetVariableName}.{propertyInfo.Name}.{subProperty.Name} = {configSectionVariableName}.GetValue<{subProperty.PropertyType.GetCSharpFullName()}>(""{param.Value.ConfigSection.Key}"");");
                     }
                     else if (
                         (propertyInfo.PropertyType.GetMethods().SingleOrDefault(x => x.Name == param.Key) ??
@@ -374,24 +392,37 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
             else
             {
                 emitContext.Write(
-                    $@"{targetVariableName}.{propertyInfo.Name} = {configSectionVariableName}.GetValue<{propertyInfo.PropertyType.FullName}>(""{methodName}"");");
+                    $@"{targetVariableName}.{propertyInfo.Name} = {configSectionVariableName}.GetValue<{propertyInfo.PropertyType.GetCSharpFullName()}>(""{methodName}"");");
             }
         }
         else if (paramArgs?.Count > 0)
         {
             emitContext.EmitComplex(
-                new List<MethodInfo> { configurationMethod! },
+                configurationMethod!,
                 configSectionVariableName,
                 configSection.Key,
                 targetVariableName,
                 configSection,
                 $"section{methodName}",
                 configSectionName,
-                rootConfiguration);
+                rootConfiguration,
+                paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
         }
         else
         {
             emitContext.EmitSimpleBoolean(new List<MethodInfo> { configurationMethod! }, configSectionVariableName, methodName, targetVariableName);
+        }
+    }
+
+    public static string GetCSharpFullName(this Type propertyType)
+    {
+        if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+        {
+            return $"{propertyType.GetGenericArguments()[0].FullName}?";
+        }
+        else
+        {
+            return propertyType.FullName;
         }
     }
 }
