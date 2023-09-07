@@ -17,7 +17,7 @@ internal static class DiagnosticDescriptorHelper
             string? description = null,
             params string[] customTags)
     {
-        string helpLink = $"https://learn.microsoft.com/dotnet/fundamentals/syslib-diagnostics/{id.ToLowerInvariant()}.md";
+        string helpLink = $"https://github.com/almostchristian/ConfigurationProcessor.DependencyInjection/diagnostics/{id.ToLowerInvariant()}.md";
 
         return new DiagnosticDescriptor(id, title, messageFormat, category, defaultSeverity, isEnabledByDefault, description, helpLink, customTags);
     }
