@@ -288,7 +288,7 @@ internal class Parser
                                 if (foundServiceCollection && matchesServiceCollection)
                                 {
                                     keepMethod = false;
-                                    Diag(DiagnosticDescriptors.InvalidGenerateConfigurationMethodName, paramSymbol.Locations[0]);
+                                    Diag(DiagnosticDescriptors.MultipleServiceCollectionParameter, paramSymbol.Locations[0]);
                                     break;
                                 }
                                 else if (matchesServiceCollection)
@@ -300,7 +300,7 @@ internal class Parser
                                 if (foundConfiguration && matchesConfiguration)
                                 {
                                     keepMethod = false;
-                                    Diag(DiagnosticDescriptors.InvalidGenerateConfigurationMethodName, paramSymbol.Locations[0]);
+                                    Diag(DiagnosticDescriptors.MultipleConfigurationParameter, paramSymbol.Locations[0]);
                                     break;
                                 }
                                 else if (matchesConfiguration)
@@ -345,7 +345,7 @@ internal class Parser
                                             if (foundServiceCollection && matchesServiceCollection)
                                             {
                                                 keepMethod = false;
-                                                Diag(DiagnosticDescriptors.InvalidGenerateConfigurationMethodName, paramSymbol.Locations[0]);
+                                                Diag(DiagnosticDescriptors.MultipleServiceCollectionParameter, paramSymbol.Locations[0]);
                                                 break;
                                             }
                                             else if (matchesServiceCollection)
@@ -357,7 +357,7 @@ internal class Parser
                                             if (foundConfiguration && matchesConfiguration)
                                             {
                                                 keepMethod = false;
-                                                Diag(DiagnosticDescriptors.InvalidGenerateConfigurationMethodName, paramSymbol.Locations[0]);
+                                                Diag(DiagnosticDescriptors.MultipleConfigurationParameter, paramSymbol.Locations[0]);
                                                 break;
                                             }
                                             else if (matchesConfiguration)
@@ -390,12 +390,12 @@ internal class Parser
 
                                     if (multipleServiceCollectionFields)
                                     {
-                                        Diag(DiagnosticDescriptors.MultipleServiceCollectionFields, method.GetLocation(), classDec.Identifier.Text);
+                                        Diag(DiagnosticDescriptors.MultipleServiceCollectionParameter, method.GetLocation(), classDec.Identifier.Text);
                                         keepMethod = false;
                                     }
                                     else if (serviceCollectionField == null)
                                     {
-                                        Diag(DiagnosticDescriptors.MissingServiceCollectionField, method.GetLocation(), classDec.Identifier.Text);
+                                        Diag(DiagnosticDescriptors.MissingServiceCollectionParameter, method.GetLocation(), classDec.Identifier.Text);
                                         keepMethod = false;
                                     }
                                     else
@@ -405,7 +405,7 @@ internal class Parser
                                 }
                                 else if (!foundConfiguration)
                                 {
-                                    Diag(DiagnosticDescriptors.MissingConfigurationField, method.GetLocation(), classDec.Identifier.Text);
+                                    Diag(DiagnosticDescriptors.MissingConfigurationParameter, method.GetLocation(), classDec.Identifier.Text);
                                     keepMethod = false;
                                 }
                             }
@@ -442,6 +442,12 @@ internal class Parser
                                         nspace = $"{namespaceParent.Name}.{nspace}";
                                     }
                                 }
+                            }
+
+                            if (string.IsNullOrEmpty(nspace))
+                            {
+                                keepMethod = false;
+                                Diag(DiagnosticDescriptors.TopLevelClassNotSupported, method.GetLocation());
                             }
 
                             if (keepMethod)

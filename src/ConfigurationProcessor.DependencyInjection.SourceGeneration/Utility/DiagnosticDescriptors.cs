@@ -78,26 +78,34 @@ internal static class DiagnosticDescriptors
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static DiagnosticDescriptor MissingConfigurationField { get; } = DiagnosticDescriptorHelper.Create(
+    public static DiagnosticDescriptor MissingConfigurationParameter { get; } = DiagnosticDescriptorHelper.Create(
         id: "CPGEN1018",
-        title: "Missing IConfiguration field",
-        messageFormat: "Missing IConfiguration field",
+        title: "Missing IConfiguration parameter/field",
+        messageFormat: "Missing IConfiguration parameter/field",
         category: Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static DiagnosticDescriptor MissingServiceCollectionField { get; } = DiagnosticDescriptorHelper.Create(
+    public static DiagnosticDescriptor MissingServiceCollectionParameter { get; } = DiagnosticDescriptorHelper.Create(
         id: "CPGEN1019",
-        title: "Missing IServiceCollection field",
-        messageFormat: "Missing IServiceCollection field",
+        title: "Missing IServiceCollection parameter/field",
+        messageFormat: "Missing IServiceCollection paramter/field",
         category: Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static DiagnosticDescriptor MultipleServiceCollectionFields { get; } = DiagnosticDescriptorHelper.Create(
+    public static DiagnosticDescriptor MultipleServiceCollectionParameter { get; } = DiagnosticDescriptorHelper.Create(
         id: "CPGEN1020",
-        title: "Multiple IServiceCollection fields",
-        messageFormat: "Multiple IServiceCollection fields",
+        title: "Multiple IServiceCollection parameters/fields",
+        messageFormat: "Multiple IServiceCollection parameters/fields",
+        category: Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor MultipleConfigurationParameter { get; } = DiagnosticDescriptorHelper.Create(
+        id: "CPGEN1021",
+        title: "Multiple IConfiguration parameters/fields",
+        messageFormat: "Multiple IConfiguration parameters/fields",
         category: Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -114,6 +122,14 @@ internal static class DiagnosticDescriptors
         id: "CPGEN1027",
         title: "Configuration file not found.",
         messageFormat: "Configuration file '{0}' not found.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static DiagnosticDescriptor TopLevelClassNotSupported { get; } = DiagnosticDescriptorHelper.Create(
+        id: "CPGEN1028",
+        title: "Top level class is not supported.",
+        messageFormat: "Top level class is not valid.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
