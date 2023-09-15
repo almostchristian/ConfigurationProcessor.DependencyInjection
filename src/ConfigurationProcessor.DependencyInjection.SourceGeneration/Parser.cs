@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Data;
 using System.Diagnostics;
 using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
 using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
@@ -83,7 +84,7 @@ internal class Parser
                     IMethodSymbol? configurationMethodSymbol = sm.GetDeclaredSymbol(method, cancellationToken)!;
                     Debug.Assert(configurationMethodSymbol != null, "configuration method is present.");
                     (string configurationSection, string? configurationFile) = (string.Empty, null);
-
+                    string[] excluded = Array.Empty<string>();
                     foreach (AttributeListSyntax mal in method.AttributeLists)
                     {
                         foreach (AttributeSyntax ma in mal.Attributes)
@@ -158,6 +159,10 @@ internal class Parser
                                                 case "ConfigurationFile":
                                                     configurationFile = (string?)GetItem(value);
                                                     break;
+                                                case "ExcludedSections":
+                                                    var values = (ImmutableArray<TypedConstant>)GetItem(value)!;
+                                                    excluded = values.Select(x => $"{configurationSection}:{x.Value}").ToArray();
+                                                    break;
                                             }
                                         }
                                     }
@@ -189,6 +194,13 @@ internal class Parser
                             else
                             {
                                 configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFilePath));
+
+                                if (excluded.Length > 0)
+                                {
+                                    configurationValues = configurationValues
+                                        .Where(x => !excluded.Any(z => x.Key.StartsWith(z)))
+                                        .ToDictionary(x => x.Key, x => x.Value);
+                                }
                             }
 
                             var methodSignature = string.Join(", ", configurationMethodSymbol.Parameters.Select(ToDisplay));
