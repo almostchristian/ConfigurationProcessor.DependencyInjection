@@ -29,6 +29,11 @@ public class GenerateServiceRegistrationAttribute : Attribute
     public string ConfigurationFile { get; set; } = DefaultConfigurationFile;
 
     /// <summary>
+    /// Sections to exclude.
+    /// </summary>
+    public string[] ExcludedSections { get; set; } = Array.Empty<string>();
+
+    /// <summary>
     /// Gets the configuration section.
     /// </summary>
     public string ConfigurationSection { get; }
