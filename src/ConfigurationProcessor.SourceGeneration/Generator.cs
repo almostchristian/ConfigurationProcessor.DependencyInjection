@@ -93,7 +93,7 @@ public class Generator : ISourceGenerator
                     INamedTypeSymbol attributeContainingTypeSymbol = attributeSymbol.ContainingType;
                     string fullName = attributeContainingTypeSymbol.ToDisplayString();
 
-                    if (fullName == Parser.GenerateServiceRegistrationAttribute)
+                    if (fullName == Parser.GenerateConfigurationAttributeName)
                     {
                         return methodDeclarationSyntax.Parent as ClassDeclarationSyntax;
                     }
