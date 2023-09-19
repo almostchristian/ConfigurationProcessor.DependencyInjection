@@ -4,7 +4,7 @@
 /// Attribute for generating service registration.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public class GenerateServiceRegistrationAttribute : Attribute
+public class GenerateConfigurationAttribute : Attribute
 {
     /// <summary>
     /// The default configuration file name.
@@ -12,9 +12,9 @@ public class GenerateServiceRegistrationAttribute : Attribute
     public const string DefaultConfigurationFile = "appsettings.json";
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="GenerateServiceRegistrationAttribute"/> class.
+    /// Initializes a new instance of the <see cref="GenerateConfigurationAttribute"/> class.
     /// </summary>
-    public GenerateServiceRegistrationAttribute(string configurationSection)
+    public GenerateConfigurationAttribute(string configurationSection)
     {
         ConfigurationSection = configurationSection;
     }

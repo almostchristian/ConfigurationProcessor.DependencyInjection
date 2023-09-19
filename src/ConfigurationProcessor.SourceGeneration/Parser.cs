@@ -12,7 +12,7 @@ namespace ConfigurationProcessor.SourceGeneration;
 internal class Parser
 {
     internal const string DefaultConfigurationFile = "appsettings.json";
-    internal const string GenerateServiceRegistrationAttribute = "ConfigurationProcessor.GenerateServiceRegistrationAttribute";
+    internal const string GenerateConfigurationAttributeName = "ConfigurationProcessor.GenerateConfigurationAttribute";
     internal const string ServiceCollectionTypeName = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
     internal const string WebApplicationBuilderTypeName = "Microsoft.AspNetCore.Builder.WebApplicationBuilder";
     private readonly GeneratorExecutionContext context;
@@ -28,7 +28,7 @@ internal class Parser
 
     internal IReadOnlyList<ServiceRegistrationClass> GetServiceRegistrationClasses(IEnumerable<ClassDeclarationSyntax> classes)
     {
-        INamedTypeSymbol? generateServiceRegistrationAttribute = context.Compilation.GetBestTypeByMetadataName(GenerateServiceRegistrationAttribute);
+        INamedTypeSymbol? generateServiceRegistrationAttribute = context.Compilation.GetBestTypeByMetadataName(GenerateConfigurationAttributeName);
         if (generateServiceRegistrationAttribute == null)
         {
             // nothing to do if this type isn't available

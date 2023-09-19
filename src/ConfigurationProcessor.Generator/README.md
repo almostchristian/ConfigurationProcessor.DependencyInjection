@@ -1,6 +1,6 @@
-# ConfigurationProcessor.DependencyInjection.Generator
+# ConfigurationProcessor.Generator
 
-[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.DependencyInjection.Generator.svg?label=ConfigurationProcessor.DependencyInjection.Generator)](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection.Generator)
+[![NuGet](https://img.shields.io/nuget/v/ConfigurationProcessor.Generator.svg?label=ConfigurationProcessor.Generator)](https://www.nuget.org/packages/ConfigurationProcessor.Generator)
 
 This packages uses source generation to generate dependency injection registration methods based on the `appsettings.config` configuration. This is still in beta and the current version partially supports the configuration mechanisms available in the [ConfigurationProcessor.DependencyInjection](https://www.nuget.org/packages/ConfigurationProcessor.DependencyInjection/) package.
 
@@ -11,18 +11,18 @@ This packages uses source generation to generate dependency injection registrati
 ```csharp
 internal static partial class ServiceRegistrations
 {
-   [GenerateServiceRegistration("Services")]
+   [GenerateConfiguration("Services")]
    internal static partial void RegisterServices(this IServiceCollection services, IConfiguration configuration);
 
-   [GenerateServiceRegistration("Services")]
+   [GenerateConfiguration("Services")]
    public static partial void AddServicesFromConfiguration(this WebApplicationBuilder builder);
 }
 ```
 
-Create a static partial method in a partial class decorated with `GenerateServiceRegistrationAttribute` and that contains an `IServiceCollection` and `IConfiguration` parameters or a single parameter with a parameter type that contains a single `IServiceCollection` and `IConfiguration` property.
+Create a static partial method in a partial class decorated with `GenerateConfigurationAttribute` and that contains an `IServiceCollection` and `IConfiguration` parameters or a single parameter with a parameter type that contains a single `IServiceCollection` and `IConfiguration` property.
 
 
-The `GenerateServiceRegistrationAttribute` requires a single argument , `configurationSection` which will be the configuration section in the `appsettings.json` to read from.
+The `GenerateConfigurationAttribute` requires a single argument , `configurationSection` which will be the configuration section in the `appsettings.json` to read from.
 
 ### Sample configuration
 
