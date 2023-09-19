@@ -1,15 +1,28 @@
 ﻿using System.Reflection;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
+using ConfigurationProcessor.SourceGeneration.Parsing;
+using ConfigurationProcessor.SourceGeneration.Utility;
 using Microsoft.Extensions.Configuration;
 
-namespace ConfigurationProcessor.DependencyInjection.SourceGeneration;
+namespace ConfigurationProcessor.SourceGeneration;
 
-internal class Emitter
+/// <summary>
+/// Generates code.
+/// </summary>
+public static class Emitter
 {
+    /// <summary>
+    /// The version string.
+    /// </summary>
     public static readonly string VersionString = typeof(Emitter).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
 
-    public string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
+    /// <summary>
+    /// Generates code from service class registrations.
+    /// </summary>
+    /// <param name="generateConfigurationClasses"></param>
+    /// <param name="references"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public static string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
     {
         var emitContext = new EmitContext(generateConfigurationClasses.First().Namespace, references);
 
@@ -31,12 +44,13 @@ internal class Emitter
             emitContext.IncreaseIndent();
             foreach (var configMethod in configClass.Methods)
             {
+                emitContext.ImplicitSuffixes = configMethod.ImplicitSuffixes;
                 var sectionName = configMethod.ConfigurationSectionName;
 
                 string configSectionVariableName = "servicesSection";
 
                 emitContext.Write($$"""
-                    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("ConfigurationProcessor.DependencyInjection.Generator", "{{VersionString}}")]
+                    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("ConfigurationProcessor.Generator", "{{VersionString}}")]
                     {{configMethod.Modifiers}} void {{configMethod.Name}}({{configMethod.Arguments}})
                     {
                        var {{configSectionVariableName}} = {{configMethod.ConfigurationField}}.GetSection("{{sectionName}}");
@@ -47,7 +61,7 @@ internal class Emitter
                     """);
 
                 emitContext.IncreaseIndent();
-                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.ServiceCollectionField!, configSectionVariableName);
+                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configSectionVariableName);
                 emitContext.DecreaseIndent();
                 emitContext.Write("}");
             }
@@ -63,7 +77,7 @@ internal class Emitter
         return emitContext.ToString();
     }
 
-    private void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string configSectionVariableName)
+    private static void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string configSectionVariableName)
     {
         var configBuilder = new ConfigurationBuilder();
         configBuilder.AddInMemoryCollection(configurationValues);

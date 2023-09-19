@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace ConfigurationProcessor.DependencyInjection;
+﻿namespace ConfigurationProcessor;
 
 /// <summary>
 /// Attribute for generating service registration.
@@ -32,6 +28,16 @@ public class GenerateServiceRegistrationAttribute : Attribute
     /// Sections to exclude.
     /// </summary>
     public string[] ExcludedSections { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Subsections that are treated separately.
+    /// </summary>
+    public string[] ExpandableSections { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Suffixes that can be ommitted.
+    /// </summary>
+    public string[] ImplicitSuffixes { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Gets the configuration section.

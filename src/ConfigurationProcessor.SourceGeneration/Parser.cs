@@ -1,19 +1,20 @@
 ﻿using System.Collections.Immutable;
 using System.Data;
 using System.Diagnostics;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
+using ConfigurationProcessor.SourceGeneration.Parsing;
+using ConfigurationProcessor.SourceGeneration.Utility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace ConfigurationProcessor.DependencyInjection.SourceGeneration;
+namespace ConfigurationProcessor.SourceGeneration;
 
 internal class Parser
 {
     internal const string DefaultConfigurationFile = "appsettings.json";
-    internal const string GenerateServiceRegistrationAttribute = "ConfigurationProcessor.DependencyInjection.GenerateServiceRegistrationAttribute";
+    internal const string GenerateServiceRegistrationAttribute = "ConfigurationProcessor.GenerateServiceRegistrationAttribute";
     internal const string ServiceCollectionTypeName = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
+    internal const string WebApplicationBuilderTypeName = "Microsoft.AspNetCore.Builder.WebApplicationBuilder";
     private readonly GeneratorExecutionContext context;
     private readonly Action<Diagnostic> reportDiagnostic;
     private readonly CancellationToken cancellationToken;
@@ -35,11 +36,7 @@ internal class Parser
         }
 
         INamedTypeSymbol? serviceCollectionSymbol = context.Compilation.GetBestTypeByMetadataName(ServiceCollectionTypeName);
-        if (serviceCollectionSymbol == null)
-        {
-            // nothing to do if this type isn't available
-            return Array.Empty<ServiceRegistrationClass>();
-        }
+        INamedTypeSymbol? webApplicationBuilderSymbol = context.Compilation.GetBestTypeByMetadataName(WebApplicationBuilderTypeName);
 
         INamedTypeSymbol? configurationSymbol = context.Compilation.GetBestTypeByMetadataName("Microsoft.Extensions.Configuration.IConfiguration");
         if (configurationSymbol == null)
@@ -85,6 +82,7 @@ internal class Parser
                     Debug.Assert(configurationMethodSymbol != null, "configuration method is present.");
                     (string configurationSection, string? configurationFile) = (string.Empty, null);
                     string[] excluded = Array.Empty<string>();
+                    string[] suffixes = Array.Empty<string>();
                     foreach (AttributeListSyntax mal in method.AttributeLists)
                     {
                         foreach (AttributeSyntax ma in mal.Attributes)
@@ -163,6 +161,10 @@ internal class Parser
                                                     var values = (ImmutableArray<TypedConstant>)GetItem(value)!;
                                                     excluded = values.Select(x => $"{configurationSection}:{x.Value}").ToArray();
                                                     break;
+                                                case "ImplicitSuffixes":
+                                                    values = (ImmutableArray<TypedConstant>)GetItem(value)!;
+                                                    suffixes = values.Select(x => x.Value?.ToString()).Where(x => !string.IsNullOrEmpty(x)).ToArray()!;
+                                                    break;
                                             }
                                         }
                                     }
@@ -210,7 +212,7 @@ internal class Parser
                             }
 
                             var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, methodSignature, method.Modifiers.ToString(), configurationValues, configurationSection);
-
+                            lm.ImplicitSuffixes = suffixes;
                             static string ToDisplay(IParameterSymbol parameter)
                             {
                                 return $"global::{parameter.Type} {parameter.Name}";
@@ -267,7 +269,7 @@ internal class Parser
                                 keepMethod = false;
                             }
 
-                            bool foundServiceCollection = false;
+                            bool foundTarget = false;
                             bool foundConfiguration = false;
                             foreach (IParameterSymbol paramSymbol in configurationMethodSymbol.Parameters)
                             {
@@ -295,18 +297,18 @@ internal class Parser
                                     Diag(DiagnosticDescriptors.InvalidGenerateConfigurationMethodParameterName, paramSymbol.Locations[0]);
                                 }
 
-                                var matchesServiceCollection = IsBaseOrIdentity(paramTypeSymbol, serviceCollectionSymbol);
+                                var notMatchesConfiguration = !IsBaseOrIdentity(paramTypeSymbol, configurationSymbol);
                                 var matchesConfiguration = IsBaseOrIdentity(paramTypeSymbol, configurationSymbol);
-                                if (foundServiceCollection && matchesServiceCollection)
+                                if (foundTarget && notMatchesConfiguration)
                                 {
                                     keepMethod = false;
                                     Diag(DiagnosticDescriptors.MultipleServiceCollectionParameter, paramSymbol.Locations[0]);
                                     break;
                                 }
-                                else if (matchesServiceCollection)
+                                else if (notMatchesConfiguration)
                                 {
-                                    foundServiceCollection = matchesServiceCollection;
-                                    lm.ServiceCollectionField = paramName;
+                                    foundTarget = notMatchesConfiguration;
+                                    lm.TargetField = paramName;
                                 }
 
                                 if (foundConfiguration && matchesConfiguration)
@@ -322,7 +324,7 @@ internal class Parser
                                 }
                             }
 
-                            if (keepMethod && !foundServiceCollection && !foundConfiguration && configurationMethodSymbol.Parameters.Length == 1)
+                            if (keepMethod && !foundConfiguration && configurationMethodSymbol.Parameters.Length == 1)
                             {
                                 // we check if the single parameter has public properties that are assignable to serviceCollection and configuration
                                 var paramSymbol = configurationMethodSymbol.Parameters[0];
@@ -349,12 +351,18 @@ internal class Parser
                                     }
                                     else
                                     {
+                                        bool isWebAppBuilder = webApplicationBuilderSymbol != null && IsBaseOrIdentity(paramTypeSymbol, webApplicationBuilderSymbol);
+                                        if (isWebAppBuilder)
+                                        {
+                                            foundTarget = false;
+                                        }
+
                                         var properties = paramTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToArray();
                                         foreach (var property in properties)
                                         {
-                                            var matchesServiceCollection = IsBaseOrIdentity(property.Type, serviceCollectionSymbol);
+                                            var matchesServiceCollection = isWebAppBuilder && serviceCollectionSymbol != null && IsBaseOrIdentity(property.Type, serviceCollectionSymbol);
                                             var matchesConfiguration = IsBaseOrIdentity(property.Type, configurationSymbol);
-                                            if (foundServiceCollection && matchesServiceCollection)
+                                            if (foundTarget && matchesServiceCollection)
                                             {
                                                 keepMethod = false;
                                                 Diag(DiagnosticDescriptors.MultipleServiceCollectionParameter, paramSymbol.Locations[0]);
@@ -362,8 +370,8 @@ internal class Parser
                                             }
                                             else if (matchesServiceCollection)
                                             {
-                                                foundServiceCollection = matchesServiceCollection;
-                                                lm.ServiceCollectionField = $"{paramName}.{property.Name}";
+                                                foundTarget = matchesServiceCollection;
+                                                lm.TargetField = $"{paramName}.{property.Name}";
                                             }
 
                                             if (foundConfiguration && matchesConfiguration)
@@ -384,18 +392,18 @@ internal class Parser
 
                             if (keepMethod)
                             {
-                                if (isStatic && !foundServiceCollection)
+                                if (isStatic && !foundTarget)
                                 {
                                     Diag(DiagnosticDescriptors.MissingGenerateConfigurationArgument, method.GetLocation(), lm.Name);
                                     keepMethod = false;
                                 }
-                                else if (!isStatic && foundServiceCollection)
+                                else if (!isStatic && foundTarget)
                                 {
                                     Diag(DiagnosticDescriptors.GenerateConfigurationMethodShouldBeStatic, method.GetLocation());
                                 }
-                                else if (!isStatic && !foundServiceCollection)
+                                else if (!isStatic && !foundTarget)
                                 {
-                                    if (serviceCollectionField == null)
+                                    if (serviceCollectionField == null && serviceCollectionSymbol != null)
                                     {
                                         (serviceCollectionField, multipleServiceCollectionFields) = FindServiceCollectionField(sm, classDec, serviceCollectionSymbol);
                                     }
@@ -412,7 +420,7 @@ internal class Parser
                                     }
                                     else
                                     {
-                                        lm.ServiceCollectionField = serviceCollectionField;
+                                        lm.TargetField = serviceCollectionField;
                                     }
                                 }
                                 else if (!foundConfiguration)

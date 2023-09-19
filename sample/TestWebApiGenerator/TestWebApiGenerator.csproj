@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\ConfigurationProcessor.DependencyInjection.Generator\ConfigurationProcessor.DependencyInjection.Generator.csproj" />
-    <ProjectReference Include="..\..\src\ConfigurationProcessor.DependencyInjection.SourceGeneration\ConfigurationProcessor.DependencyInjection.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ConfigurationProcessor.Generator\ConfigurationProcessor.Generator.csproj" />
+    <ProjectReference Include="..\..\src\ConfigurationProcessor.SourceGeneration\ConfigurationProcessor.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

@@ -11,7 +11,7 @@
   </PropertyGroup>
 
    <ItemGroup>
-     <ProjectReference Include="..\ConfigurationProcessor.DependencyInjection.SourceGeneration\ConfigurationProcessor.DependencyInjection.SourceGeneration.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" PackAsAnalyzer="true" />
+     <ProjectReference Include="..\ConfigurationProcessor.SourceGeneration\ConfigurationProcessor.SourceGeneration.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" PackAsAnalyzer="true" />
 
 	  <PackageReference Include="Microsoft.Extensions.Primitives" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />
 	  <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" GeneratePathProperty="true" PrivateAssets="all" />

@@ -114,6 +114,22 @@ internal static class CommonExtensions
         IEnumerable<string>? candidateNames,
         MethodFilter? filter)
     {
+        static bool IsDefined(MethodInfo method, Type attributeType)
+        {
+#if Generator
+            try
+            {
+                return method.CustomAttributes.Any(x => x.AttributeType.FullName == attributeType.FullName);
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+#else
+            return method.IsDefined(attributeType, false);
+#endif
+        }
+
         IReadOnlyCollection<Assembly> configurationAssemblies = resolutionContext.ConfigurationAssemblies;
         var interfaces = configType.GetInterfaces();
         var scannedTypes = configurationAssemblies
@@ -125,11 +141,13 @@ internal static class CommonExtensions
             .Concat(interfaces.Select(t => t.GetTypeInfo()))
             .SelectMany(t => candidateNames != null ? candidateNames.SelectMany(n => t.GetDeclaredMethods(n)) : t.DeclaredMethods)
             .Where(m => filter == null || filter(m, key))
-#if Generator
-            .Where(m => m.IsPublic && (m.IsStatic || IsTypeCompatible(configType, m.DeclaringType) || interfaces.Contains(m.DeclaringType)))
-#else
-            .Where(m => !m.IsDefined(typeof(CompilerGeneratedAttribute), false) && m.IsPublic && ((m.IsStatic && m.IsDefined(typeof(ExtensionAttribute), false)) || IsTypeCompatible(configType, m.DeclaringType) || interfaces.Contains(m.DeclaringType)))
-#endif
+            .Where(m =>
+                !IsDefined(m, typeof(CompilerGeneratedAttribute)) && // method must not be compiler generated and
+                m.IsPublic && // method must be public and
+                (
+                    (m.IsStatic && IsDefined(m, typeof(ExtensionAttribute))) || // method is an extension method
+                    IsTypeCompatible(configType, m.DeclaringType) || // method is declared in the target object type
+                    interfaces.Contains(m.DeclaringType))) // the method is declared in one of the implemented interfaces
             .Where(m => !m.IsStatic || configType.IsTypeCompatible(SafeGetParameters(m).ElementAtOrDefault(0)?.ParameterType)) // If static method, checks that the first parameter is same as the extension type
             .ToList();
 

@@ -1,13 +1,18 @@
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
+using ConfigurationProcessor.SourceGeneration.Parsing;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyModel;
+using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
+using TestDummies;
 
-namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.UnitTests;
+namespace ConfigurationProcessor.SourceGeneration.UnitTests;
 
 public class EmitterTests
 {
+    public static DummyDelegate DummyDelegateField = DelegateMembers.TestDelegate;
+
     [Fact]
     public void WithObjectNotation_MapToExtensionMethodWithSingleStringParameterUsingStringValue_RegistersService()
     {
@@ -17,6 +22,194 @@ public class EmitterTests
             }
             """,
             @"services.AddSimpleString(servicesSection.GetValue<System.String>(""SimpleString""));");
+    }
+
+    [Fact]
+    public void WithObjectNotation_MapStringArrayUsingArrayNotationWithSingleStringOverloadUsingArrayWithMultipleElements_RegistersWithArrayOverload()
+    {
+        TestConfig("""
+            {
+               "DummyString": [
+                  "hello",
+                  "world"
+               ]
+            }
+            """,
+            """
+            var sectionDummyString = servicesSection.GetSection("DummyString");
+            if (sectionDummyString.Exists())
+            {
+               services.AddDummyString(sectionDummyString.Get<System.String[]>());
+            }
+            """);
+    }
+
+    [Fact]
+    public void WithObjectNotation_MapStringArrayUsingArrayNotationWithSingleStringOverloadUsingArrayWithSingleElement_RegistersWithArrayOverload()
+    {
+        TestConfig("""
+            {
+               "DummyString": [
+                  "hello"
+               ]
+            }
+            """,
+            """
+            var sectionDummyString = servicesSection.GetSection("DummyString");
+            if (sectionDummyString.Exists())
+            {
+               services.AddDummyString(sectionDummyString.Get<System.String[]>());
+            }
+            """);
+    }
+
+    [Fact]
+    public void WithObjectNotation_MapIntArrayDirectlyWithOverload_RegistersService()
+    {
+        TestConfig("""
+            {
+               "DummyArray": [
+                  1,
+                  2
+               ]
+            }
+            """,
+            """
+            var sectionDummyArray = servicesSection.GetSection("DummyArray");
+            if (sectionDummyArray.Exists())
+            {
+               services.AddDummyArray(sectionDummyArray.Get<System.Int32[]>());
+            }
+            """);
+    }
+
+    [Fact]
+    public void WithObjectNotation_MapUsingStringDirectlyWithStringArrayOverload_RegistersWithSingleStringOverload()
+    {
+        TestConfig("""
+            {
+               "DummyString": "hello"
+            }
+            """,
+            """
+            services.AddDummyString(servicesSection.GetValue<System.String>("DummyString"));
+            """);
+    }
+
+    [Fact]
+    public void WithObjectNotation_MapToExtensionMethodWithSingleDelegateParameterDirectly_RegistersService()
+    {
+        TestConfig($$"""
+            {
+               "SimpleDelegate": "{{NameOf<DelegateMembers>()}}::{{nameof(DelegateMembers.TestDelegate)}}"
+            }
+            """,
+            $$"""
+            if (servicesSection.GetValue<string>("SimpleDelegate") == "{{NameOf<DelegateMembers>()}}::{{nameof(DelegateMembers.TestDelegate)}}")
+            {
+                services.AddSimpleDelegate({{NameOf<DelegateMembers>()}}.{{nameof(DelegateMembers.TestDelegate)}});
+            }
+            """);
+    }
+
+    [Theory]
+    [InlineData("Time")]
+    [InlineData("Time2")]
+    public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegate_GeneratesConfigurationActionBasedOnObject(string timeProperty)
+    {
+        TestConfig($$"""
+            {
+               "ConfigurationAction": {
+                  "Name": "hello",
+                  "Value": {
+                     "{{timeProperty}}" : "13:00:10",
+                     "Location": "http://www.google.com",
+                     "ContextType": "{{NameOf<SimpleObject>()}}",
+                     "OnError": "{{NameOf<EmitterTests>()}}::{{nameof(DummyDelegateField)}}"
+                  }
+               }
+            }
+            """,
+            $$"""
+            var sectionConfigurationAction = servicesSection.GetSection("ConfigurationAction");
+            if (sectionConfigurationAction.Exists())
+            {
+               services.AddConfigurationAction(options =>
+               {
+                  options.Value = new TestDummies.ComplexObject.ChildValue();
+                  if (sectionConfigurationAction.GetValue<string>("Value:ContextType") == "{{NameOf<SimpleObject>()}}")
+                  {
+                     options.Value.ContextType = typeof({{NameOf<SimpleObject>()}});
+                  }
+                  else
+                  {
+                     options.Value.ContextType = global::System.Type.GetType(sectionConfigurationAction.GetValue<string>("Value:ContextType"));
+                  }
+
+                  options.Value.Location = sectionConfigurationAction.GetValue<System.Uri>("Value:Location");
+                  if (sectionConfigurationAction.GetValue<string>("Value:OnError") == "{{NameOf<EmitterTests>()}}::{{nameof(DummyDelegateField)}}")
+                  {
+                     options.Value.OnError = {{NameOf<EmitterTests>()}}.{{nameof(DummyDelegateField)}};
+                  }
+
+                  options.Value.{{timeProperty}} = sectionConfigurationAction.GetValue<System.TimeSpan?>("Value:{{timeProperty}}");
+                  options.Name = sectionConfigurationAction.GetValue<System.String>("Name");
+               });
+            }
+            """);
+    }
+
+    [Fact]
+    public void WithObjectNotation_MapToExtensionMethodAcceptingConfigurationActionDelegate_CanCallExtensionMethodsWithSingleStringParameterForConfigurationObjectWithString()
+    {
+        TestConfig("""
+            {
+               "ConfigurationAction": {
+                  "ConfigureName": "hello"
+               }
+            }
+            """,
+            """
+            var sectionConfigurationAction = servicesSection.GetSection("ConfigurationAction");
+            if (sectionConfigurationAction.Exists())
+            {
+               services.AddConfigurationAction(options =>
+               {
+
+                  options.AddConfigureName(sectionConfigurationAction.GetValue<System.String>("ConfigureName"));
+               });
+            }
+            """);
+    }
+
+
+    [Fact]
+    public void ConfigurationActionWithMethods()
+    {
+        TestConfig("""
+            {
+               "ConfigurationAction": {
+                  "SetName": {
+                        "Name": "hello"
+                  }
+               }
+            }
+            """,
+            """
+            var sectionConfigurationAction = servicesSection.GetSection("ConfigurationAction");
+            if (sectionConfigurationAction.Exists())
+            {
+               services.AddConfigurationAction(options =>
+               {
+
+                  var sectionSetName = sectionConfigurationAction.GetSection("SetName");
+                  if (sectionSetName.Exists())
+                  {
+                     options.SetName(sectionSetName.GetValue<System.String>("Name"));
+                  }
+               });
+            }
+            """);
     }
 
     [Fact]
@@ -180,10 +373,8 @@ public class EmitterTests
             """);
     }
 
-    private static void TestConfig(string inputJsonFragment, string expectedCsharpFragment)
+    private static void TestConfig([StringSyntax(StringSyntaxAttribute.Json)] string inputJsonFragment, string expectedCsharpFragment)
     {
-        var emitter = new Emitter();
-
         var inputJson = $$"""
             {
                 "Services" : {{inputJsonFragment}}
@@ -201,12 +392,12 @@ public class EmitterTests
         rc.Methods.Add(new ServiceRegistrationMethod("Register", "this IServiceCollection services, IConfiguration configuration", "public partial void", configurationValues, "Services")
         {
             ConfigurationField = "configuration",
-            ServiceCollectionField = "services",
+            TargetField = "services",
         });
 
         var assemblies = GetLoadedAssemblies();
 
-        var generatedCsharp = emitter.Emit(new[] { rc }, assemblies, default);
+        var generatedCsharp = Emitter.Emit(new[] { rc }, assemblies, default);
         var expectedCsharp = $$"""
             // <auto-generated/>
             using TestDummies;
@@ -215,7 +406,7 @@ public class EmitterTests
             {
                static partial class Test
                {
-                  [global::System.CodeDom.Compiler.GeneratedCodeAttribute("ConfigurationProcessor.DependencyInjection.Generator", "{{Emitter.VersionString}}")]
+                  [global::System.CodeDom.Compiler.GeneratedCodeAttribute("ConfigurationProcessor.Generator", "{{Emitter.VersionString}}")]
                   public partial void void Register(this IServiceCollection services, IConfiguration configuration)
                   {
                      var servicesSection = configuration.GetSection("Services");
@@ -263,4 +454,6 @@ public class EmitterTests
 
         return sb.ToString().TrimEnd();
     }
+
+    internal static string NameOf<T>() => typeof(T).FullName;
 }

@@ -5,8 +5,21 @@ namespace ConfigurationProcessor.Core.Implementation;
 
 internal static class CoreCompatExtensions
 {
-    public static IConfigurationArgumentValue GetArgumentValue(this IConfigurationSection value, ResolutionContext resolutionContext)
-        => BlankConfigurationArgValue.Instance;
+    public static IConfigurationArgumentValue GetArgumentValue(this IConfigurationSection argumentSection, ResolutionContext resolutionContext)
+    {
+        IConfigurationArgumentValue argumentValue;
+
+        if (argumentSection.Value != null)
+        {
+            argumentValue = new StringArgumentValue(argumentSection, argumentSection.Value, argumentSection.Key);
+        }
+        else
+        {
+            argumentValue = new ObjectArgumentValue(argumentSection);
+        }
+
+        return argumentValue;
+    }
 
     internal static Dictionary<string, (IConfigurationArgumentValue Value, IConfigurationSection Section)> Blank(this IConfigurationSection section)
         => new()
