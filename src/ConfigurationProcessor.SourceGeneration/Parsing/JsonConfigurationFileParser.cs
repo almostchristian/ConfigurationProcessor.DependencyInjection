@@ -2,12 +2,12 @@
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 
-namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
+namespace ConfigurationProcessor.SourceGeneration.Parsing;
 
 /// <summary>
 /// This implementation is copied from Microsoft.Extensions.Configuration.Json
 /// </summary>
-internal sealed class JsonConfigurationFileParser
+public sealed class JsonConfigurationFileParser
 {
     private readonly Dictionary<string, string?> data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     private readonly Stack<string> paths = new Stack<string>();
@@ -16,6 +16,11 @@ internal sealed class JsonConfigurationFileParser
     {
     }
 
+    /// <summary>
+    /// Parses a json input stream into key value pairs.
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
     public static IDictionary<string, string?> Parse(Stream input)
         => new JsonConfigurationFileParser().ParseStream(input);
 

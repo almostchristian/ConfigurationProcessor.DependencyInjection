@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Text;
 
-namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
+namespace ConfigurationProcessor.SourceGeneration.Utility;
 
 internal record class EmitContext(string Namespace, List<Assembly> References)
 {
@@ -14,6 +14,8 @@ internal record class EmitContext(string Namespace, List<Assembly> References)
     public StringBuilder StringBuilder { get; } = new StringBuilder();
 
     public Dictionary<string, List<Type>> TypeMap { get; } = References.SelectMany(x => x.GetExportedTypes()).GroupBy(x => x.FullName).ToDictionary(x => x.Key, x => x.ToList());
+
+    public string[]? ImplicitSuffixes { get; set; }
 
     public void AddNamespace(string ns)
         => namespaces.Add(ns);

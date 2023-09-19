@@ -1,10 +1,11 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using ConfigurationProcessor.Core.Implementation;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
+using ConfigurationProcessor.SourceGeneration.Parsing;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
-namespace ConfigurationProcessor.DependencyInjection.SourceGeneration.Utility;
+namespace ConfigurationProcessor.SourceGeneration.Utility;
 
 internal static class Helpers
 {
@@ -119,7 +120,6 @@ internal static class Helpers
         string targetVariableName,
         IConfigurationSection configSection,
         string newSectionName,
-        string parentSectionName,
         IConfiguration rootConfiguration,
         Dictionary<string, IConfigurationSection> paramArgs)
     {
@@ -165,6 +165,16 @@ internal static class Helpers
 
             emitContext.DecreaseIndent();
             emitContext.Write("}");
+        }
+        else if (StringArgumentValue.TryParseStaticMemberAccessor(configSection.Value!, out var accessorTypeName, out var memberName))
+        {
+            emitContext.Write($$"""
+
+            if ({{configSectionVariableName}}.GetValue<string>("{{configKey}}") == "{{configSection.Value}}")
+            {
+                {{targetVariableName}}.{{methodName}}({{accessorTypeName}}.{{memberName}});
+            }
+            """);
         }
         else
         {
@@ -216,7 +226,6 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                configSection,
                typeArgs,
                paramArgs,
-               sectionName,
                configSectionVariableName,
                targetTypeName,
                targetVariableName);
@@ -230,15 +239,25 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
         IConfigurationSection configSection,
         TypeResolver[] typeArgs,
         Dictionary<string, (IConfigurationArgumentValue ArgName, IConfigurationSection ConfigSection)> paramArgs,
-        string configSectionName,
         string configSectionVariableName,
         string targetTypeName,
         string targetVariableName)
     {
         Type targetType = emitContext.TypeMap[targetTypeName].Single();
         var resolutionContext = new ResolutionContext(emitContext, rootConfiguration);
+
+        var origCandidateNames = new[] { methodName, $"Add{methodName}", $"set_{methodName}" };
+        var candidateNames = new List<string>(origCandidateNames);
+        if (emitContext.ImplicitSuffixes != null && emitContext.ImplicitSuffixes.Length > 0)
+        {
+            foreach (var suffix in emitContext.ImplicitSuffixes)
+            {
+                candidateNames.AddRange(origCandidateNames.Select(x => $"{x}{suffix}"));
+            }
+        }
+
         IEnumerable<MethodInfo> configurationMethods = resolutionContext
-            .FindConfigurationExtensionMethods(methodName, targetType, typeArgs, new[] { methodName, $"Add{methodName}", $"set_{methodName}" }, null);
+            .FindConfigurationExtensionMethods(methodName, targetType, typeArgs, candidateNames.ToArray(), (m, n) => candidateNames.Contains(n));
 
         var suppliedArgumentNames = paramArgs?.Keys.ToArray() ?? Array.Empty<string>();
 
@@ -361,16 +380,55 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
             }
         }
 
-        if (targetType.GetProperty(methodName) is PropertyInfo propertyInfo)
+        var propertyInfo = targetType.GetProperty(methodName);
+
+        Debug.Assert(propertyInfo != null || configurationMethod != null, "Configuration method not found and not a property");
+
+        if (propertyInfo != null)
         {
             if (paramArgs?.Count(x => !string.IsNullOrEmpty(x.Key)) > 0)
             {
+                // check if the property has an accessible setter and parameterless constructor
+                if (propertyInfo.CanWrite && propertyInfo.PropertyType.GetConstructor(Type.EmptyTypes) != null)
+                {
+                    emitContext.Write(
+                        $@"{targetVariableName}.{propertyInfo.Name} = new {propertyInfo.PropertyType.GetCSharpFullName()}();");
+                }
+
                 foreach (var param in paramArgs)
                 {
                     if (propertyInfo.PropertyType.GetProperty(param.Key) is PropertyInfo subProperty)
                     {
-                        emitContext.Write(
-                            $@"{targetVariableName}.{propertyInfo.Name}.{subProperty.Name} = {configSectionVariableName}.GetValue<{subProperty.PropertyType.GetCSharpFullName()}>(""{param.Value.ConfigSection.Key}"");");
+                        var value = param.Value.ConfigSection.GetSection(param.Key).Value;
+                        if (subProperty.PropertyType == typeof(Type))
+                        {
+                            emitContext.Write($$"""
+                                if ({{configSectionVariableName}}.GetValue<string>("{{param.Value.ConfigSection.Key}}:{{param.Key}}") == "{{value}}")
+                                {
+                                   {{targetVariableName}}.{{propertyInfo.Name}}.{{subProperty.Name}} = typeof({{value}});
+                                }
+                                else
+                                {
+                                   {{targetVariableName}}.{{propertyInfo.Name}}.{{subProperty.Name}} = global::System.Type.GetType({{configSectionVariableName}}.GetValue<string>("{{param.Value.ConfigSection.Key}}:{{param.Key}}"));
+                                }
+
+                                """);
+                        }
+                        else if (StringArgumentValue.TryParseStaticMemberAccessor(value!, out var accessorTypeName, out var memberName))
+                        {
+                            emitContext.Write($$"""
+                                if ({{configSectionVariableName}}.GetValue<string>("{{param.Value.ConfigSection.Key}}:{{param.Key}}") == "{{value}}")
+                                {
+                                   {{targetVariableName}}.{{propertyInfo.Name}}.{{subProperty.Name}} = {{accessorTypeName}}.{{memberName}};
+                                }
+
+                                """);
+                        }
+                        else
+                        {
+                            emitContext.Write(
+                                $@"{targetVariableName}.{propertyInfo.Name}.{subProperty.Name} = {configSectionVariableName}.GetValue<{subProperty.PropertyType.GetCSharpFullName()}>(""{param.Value.ConfigSection.Key}:{param.Key}"");");
+                        }
                     }
                     else if (
                         (propertyInfo.PropertyType.GetMethods().SingleOrDefault(x => x.Name == param.Key) ??
@@ -404,7 +462,6 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                 targetVariableName,
                 configSection,
                 $"section{methodName}",
-                configSectionName,
                 rootConfiguration,
                 paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
         }
@@ -422,7 +479,7 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
         }
         else
         {
-            return propertyType.FullName;
+            return propertyType.FullName.Replace('+', '.');
         }
     }
 }

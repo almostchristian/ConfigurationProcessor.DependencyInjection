@@ -166,7 +166,7 @@ namespace ConfigurationProcessor.Core.Implementation
 
                   if (methodCandidate != null)
                   {
-                     if (typeof(MethodInfo) == toType)
+                     if (typeof(MethodInfo) == toType || typeof(Delegate) == toType)
                      {
                         return methodCandidate;
                      }

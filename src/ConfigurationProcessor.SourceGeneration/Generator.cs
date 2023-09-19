@@ -4,8 +4,8 @@
 
 using System.Reflection;
 using System.Text;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration;
-using ConfigurationProcessor.DependencyInjection.SourceGeneration.Parsing;
+using ConfigurationProcessor.SourceGeneration;
+using ConfigurationProcessor.SourceGeneration.Parsing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
@@ -16,7 +16,7 @@ namespace ConfigurationProcessor;
 /// Generates method for registration based on an appsetting.json file.
 /// </summary>
 [Generator]
-public class RegistrationGenerator : ISourceGenerator
+public class Generator : ISourceGenerator
 {
     /// <inheritdoc/>
     public void Initialize(GeneratorInitializationContext context)
@@ -33,6 +33,10 @@ public class RegistrationGenerator : ISourceGenerator
             return;
         }
 
+#if DEBUG
+        System.Diagnostics.Debugger.Launch();
+#endif
+
         var p = new Parser(context, context.ReportDiagnostic, context.CancellationToken);
         IReadOnlyList<ServiceRegistrationClass> registrationClasses = p.GetServiceRegistrationClasses(receiver.ClassDeclarations);
         if (registrationClasses.Count > 0)
@@ -42,10 +46,9 @@ public class RegistrationGenerator : ISourceGenerator
             var mlc = new MetadataLoadContext(resolver);
             var references = context.Compilation.ExternalReferences.Select(x => mlc.LoadFromAssemblyPath(x.Display!)).ToList();
 
-            var e = new Emitter();
-            string result = e.Emit(registrationClasses, references, context.CancellationToken);
+            string result = Emitter.Emit(registrationClasses, references, context.CancellationToken);
 
-            context.AddSource("RegisterServices.g.cs", SourceText.From(result, Encoding.UTF8));
+            context.AddSource($"{registrationClasses.First().Name}.g.cs", SourceText.From(result, Encoding.UTF8));
         }
     }
 
