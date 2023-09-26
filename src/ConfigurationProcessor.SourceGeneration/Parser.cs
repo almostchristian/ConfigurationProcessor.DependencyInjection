@@ -80,7 +80,7 @@ internal class Parser
 
                     IMethodSymbol? configurationMethodSymbol = sm.GetDeclaredSymbol(method, cancellationToken)!;
                     Debug.Assert(configurationMethodSymbol != null, "configuration method is present.");
-                    (string configurationSection, string? configurationFile) = (string.Empty, null);
+                    (string configurationSection, string? configurationFile, string? configurationPath) = (string.Empty, null, null);
                     string[] excluded = Array.Empty<string>();
                     string[] suffixes = Array.Empty<string>();
                     foreach (AttributeListSyntax mal in method.AttributeLists)
@@ -156,6 +156,9 @@ internal class Parser
                                             {
                                                 case "ConfigurationFile":
                                                     configurationFile = (string?)GetItem(value);
+                                                    break;
+                                                case "ConfigurationPath":
+                                                    configurationPath = (string?)GetItem(value);
                                                     break;
                                                 case "ExcludedSections":
                                                     var values = (ImmutableArray<TypedConstant>)GetItem(value)!;
@@ -355,6 +358,11 @@ internal class Parser
                                         if (isWebAppBuilder)
                                         {
                                             foundTarget = false;
+                                        }
+
+                                        if (!string.IsNullOrEmpty(configurationPath))
+                                        {
+                                            lm.ConfigurationField = $"{paramName}.{configurationPath}";
                                         }
 
                                         var properties = paramTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToArray();

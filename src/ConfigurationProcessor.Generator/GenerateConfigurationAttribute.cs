@@ -25,6 +25,11 @@ public class GenerateConfigurationAttribute : Attribute
     public string ConfigurationFile { get; set; } = DefaultConfigurationFile;
 
     /// <summary>
+    /// The configuration path.
+    /// </summary>
+    public string? ConfigurationPath { get; set; }
+
+    /// <summary>
     /// Sections to exclude.
     /// </summary>
     public string[] ExcludedSections { get; set; } = Array.Empty<string>();
