@@ -363,6 +363,7 @@ internal class Parser
                                         if (!string.IsNullOrEmpty(configurationPath))
                                         {
                                             lm.ConfigurationField = $"{paramName}.{configurationPath}";
+                                            foundConfiguration = true;
                                         }
 
                                         var properties = paramTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToArray();
@@ -382,16 +383,19 @@ internal class Parser
                                                 lm.TargetField = $"{paramName}.{property.Name}";
                                             }
 
-                                            if (foundConfiguration && matchesConfiguration)
+                                            if (string.IsNullOrEmpty(configurationPath))
                                             {
-                                                keepMethod = false;
-                                                Diag(DiagnosticDescriptors.MultipleConfigurationParameter, paramSymbol.Locations[0]);
-                                                break;
-                                            }
-                                            else if (matchesConfiguration)
-                                            {
-                                                foundConfiguration = matchesConfiguration;
-                                                lm.ConfigurationField = $"{paramName}.{property.Name}";
+                                                if (foundConfiguration && matchesConfiguration)
+                                                {
+                                                    keepMethod = false;
+                                                    Diag(DiagnosticDescriptors.MultipleConfigurationParameter, paramSymbol.Locations[0]);
+                                                    break;
+                                                }
+                                                else if (matchesConfiguration)
+                                                {
+                                                    foundConfiguration = matchesConfiguration;
+                                                    lm.ConfigurationField = $"{paramName}.{property.Name}";
+                                                }
                                             }
                                         }
                                     }
