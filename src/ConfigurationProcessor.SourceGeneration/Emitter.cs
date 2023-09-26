@@ -61,7 +61,7 @@ public static class Emitter
                     """);
 
                 emitContext.IncreaseIndent();
-                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configSectionVariableName);
+                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configMethod.TargetTypeName!, configSectionVariableName);
                 emitContext.DecreaseIndent();
                 emitContext.Write("}");
             }
@@ -77,7 +77,7 @@ public static class Emitter
         return emitContext.ToString();
     }
 
-    private static void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string configSectionVariableName)
+    private static void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string targetTypeName, string configSectionVariableName)
     {
         var configBuilder = new ConfigurationBuilder();
         configBuilder.AddInMemoryCollection(configurationValues);
@@ -91,7 +91,7 @@ public static class Emitter
             directive,
             sectionName,
             configSectionVariableName,
-            Parser.ServiceCollectionTypeName,
+            targetTypeName,
             serviceCollectionParameterName);
     }
 }

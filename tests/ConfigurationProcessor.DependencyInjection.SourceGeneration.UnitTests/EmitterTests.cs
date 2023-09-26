@@ -393,6 +393,7 @@ public class EmitterTests
         {
             ConfigurationField = "configuration",
             TargetField = "services",
+            TargetTypeName = "Microsoft.Extensions.DependencyInjection.IServiceCollection",
         });
 
         var assemblies = GetLoadedAssemblies();

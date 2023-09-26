@@ -23,6 +23,11 @@ public sealed record class ServiceRegistrationMethod(string Name, string Argumen
     public string? TargetField { get; set; }
 
     /// <summary>
+    /// The target type name.
+    /// </summary>
+    public string? TargetTypeName { get; set; }
+
+    /// <summary>
     /// The configuration field expression.
     /// </summary>
     public string? ConfigurationField { get; set; }
