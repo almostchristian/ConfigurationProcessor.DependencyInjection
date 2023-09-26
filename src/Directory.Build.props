@@ -10,7 +10,7 @@
    </PropertyGroup>
 
    <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Generator')) OR $(MSBuildProjectName.EndsWith('.SourceGeneration'))">
-	  <Version>0.4.2</Version>
+	  <Version>0.4.3</Version>
 	  <PackageVersion>$(Version)-beta.1</PackageVersion>
    </PropertyGroup>
 

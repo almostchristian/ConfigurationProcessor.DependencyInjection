@@ -8,8 +8,11 @@ internal record class EmitContext(string Namespace, List<Assembly> References)
 {
     private const string SingleIndent = "   ";
     private string currentIndent = string.Empty;
-    private readonly HashSet<string> namespaces = new(StringComparer.Ordinal);
     private readonly List<string> createdTypes = new();
+    private readonly HashSet<string> namespaces = new(StringComparer.Ordinal)
+    {
+        "Microsoft.Extensions.Configuration",
+    };
 
     public StringBuilder StringBuilder { get; } = new StringBuilder();
 
