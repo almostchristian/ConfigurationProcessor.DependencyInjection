@@ -14,6 +14,22 @@ public class EmitterTests
     public static DummyDelegate DummyDelegateField = DelegateMembers.TestDelegate;
 
     [Fact]
+    public void WithCustomRootObjectNotation_MapToExtensionMethodWithSingleStringParameterUsingStringValue_RegistersService()
+    {
+        TestConfig("""
+            {
+                "Root": { "SimpleString": "hello" }
+            }
+            """,
+            """
+            var configRoot = servicesSection.GetSection("Root");
+
+            services.AddSimpleString(configRoot.GetValue<System.String>("SimpleString"));
+            """,
+            new[] { "Root" });
+    }
+
+    [Fact]
     public void WithObjectNotation_MapToExtensionMethodWithSingleStringParameterUsingStringValue_RegistersService()
     {
         TestConfig("""
@@ -373,7 +389,7 @@ public class EmitterTests
             """);
     }
 
-    private static void TestConfig([StringSyntax(StringSyntaxAttribute.Json)] string inputJsonFragment, string expectedCsharpFragment)
+    private static void TestConfig([StringSyntax(StringSyntaxAttribute.Json)] string inputJsonFragment, string expectedCsharpFragment, string[]? roots = null)
     {
         var inputJson = $$"""
             {
@@ -389,7 +405,7 @@ public class EmitterTests
             ParentClass = null,
             Keyword = "class",
         };
-        rc.Methods.Add(new ServiceRegistrationMethod("Register", "this IServiceCollection services, IConfiguration configuration", "public partial void", configurationValues, "Services")
+        rc.Methods.Add(new ServiceRegistrationMethod("Register", "this IServiceCollection services, IConfiguration configuration", "public partial void", configurationValues, roots ?? Array.Empty<string>(), "Services")
         {
             ConfigurationField = "configuration",
             TargetField = "services",

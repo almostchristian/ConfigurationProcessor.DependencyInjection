@@ -61,7 +61,28 @@ public static class Emitter
                     """);
 
                 emitContext.IncreaseIndent();
-                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configMethod.TargetTypeName!, configSectionVariableName);
+
+                if (configMethod.ConfigurationRoots.Length > 0)
+                {
+                    foreach (var configRoot in configMethod.ConfigurationRoots)
+                    {
+                        var prefix = $"{sectionName}:{configRoot}:";
+                        var configValues = configMethod.ConfigurationValues
+                            .Where(x => x.Key.StartsWith(prefix))
+                            .ToList();
+                        var configRootSectionName = $"config{configRoot.Replace(':', '_')}";
+                        emitContext.Write($$"""
+
+                            var {{configRootSectionName}} = {{configSectionVariableName}}.GetSection("{{configRoot}}");
+                            """);
+                        BuildMethods(emitContext, configValues, $"{sectionName}:{configRoot}", configMethod.TargetField!, configMethod.TargetTypeName!, configRootSectionName);
+                    }
+                }
+                else
+                {
+                    BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configMethod.TargetTypeName!, configSectionVariableName);
+                }
+
                 emitContext.DecreaseIndent();
                 emitContext.Write("}");
             }

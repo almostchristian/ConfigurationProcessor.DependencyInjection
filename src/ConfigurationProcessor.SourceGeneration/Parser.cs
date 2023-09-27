@@ -205,31 +205,19 @@ internal class Parser
                             {
                                 configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFilePath));
 
+                                if (expandedSections.Length > 0)
+                                {
+                                    var candidatePrefixes = expandedSections.Select(x => $"{configurationSection}:{x}").ToImmutableHashSet();
+                                    configurationValues = configurationValues
+                                        .Where(x => candidatePrefixes.Any(y => x.Key.StartsWith(y)))
+                                        .ToList();
+                                }
+
                                 if (excluded.Length > 0)
                                 {
                                     configurationValues = configurationValues
                                         .Where(x => !excluded.Any(z => x.Key.StartsWith(z)))
                                         .Select(x => new KeyValuePair<string, string?>(x.Key, x.Value));
-                                }
-
-                                if (expandedSections.Length > 0)
-                                {
-                                    var candidatePrefixes = expandedSections.Select(x => $"{configurationSection}:{x}").ToImmutableHashSet();
-                                    configurationValues = configurationValues
-                                        .Where(x => !candidatePrefixes.Contains(x.Key))
-                                        .Select(x => new KeyValuePair<string, string?>(ReplaceKey(x.Key), x.Value))
-                                        .ToList();
-
-                                    string ReplaceKey(string key)
-                                    {
-                                        var replacement = key;
-                                        foreach (var prefix in candidatePrefixes.Where(prefix => key.StartsWith(prefix)))
-                                        {
-                                            replacement = configurationSection + key.Substring(prefix.Length);
-                                        }
-
-                                        return replacement;
-                                    }
                                 }
                             }
 
@@ -239,7 +227,7 @@ internal class Parser
                                 methodSignature = "this " + methodSignature;
                             }
 
-                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, methodSignature, method.Modifiers.ToString(), configurationValues, configurationSection);
+                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, methodSignature, method.Modifiers.ToString(), configurationValues, expandedSections, configurationSection);
                             lm.ImplicitSuffixes = suffixes;
                             static string ToDisplay(IParameterSymbol parameter)
                             {

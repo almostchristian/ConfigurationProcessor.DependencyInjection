@@ -461,7 +461,7 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                 configSection.Key,
                 targetVariableName,
                 configSection,
-                $"section{methodName}",
+                $"section{configurationMethod!.GetDisplayName(methodName)}",
                 rootConfiguration,
                 paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
         }
@@ -473,13 +473,25 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
 
     public static string GetCSharpFullName(this Type propertyType)
     {
-        if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+        if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition().FullName == typeof(Nullable<>).FullName)
         {
-            return $"{propertyType.GetGenericArguments()[0].FullName}?";
+            return $"{propertyType.GetGenericArguments()[0].GetCSharpFullName()}?";
         }
         else
         {
             return propertyType.FullName.Replace('+', '.');
+        }
+    }
+
+    public static string GetDisplayName(this MethodInfo method, string methodName)
+    {
+        if (method.IsGenericMethod)
+        {
+            return $"{methodName}__{string.Join("_", method.GetGenericArguments().Select(x => x.Name))}";
+        }
+        else
+        {
+            return methodName;
         }
     }
 }
