@@ -167,7 +167,7 @@ internal static class CommonExtensions
         {
             return candidateMethods
                 .Where(m => m.IsGenericMethod && CanMakeGeneric(m))
-                .Select(m => m.MakeGenericMethod(typeArgs.Select((t, i) => t(m, i)).ToArray()))
+                .Select(m => m.MakeGenericMethod(typeArgs.Select((t, i) => t(m, i)).ToArray().ReplaceFakeTypes(m)))
                 .ToList();
         }
 
@@ -194,7 +194,8 @@ internal static class CommonExtensions
             {
                 try
                 {
-                    method.MakeGenericMethod(typeArgs.Select((t, i) => t(method, i)).ToArray());
+                    var types = typeArgs.Select((t, i) => t(method, i)).ToArray().ReplaceFakeTypes(method);
+                    method.MakeGenericMethod(types);
                     return true;
                 }
                 catch (ArgumentException)
@@ -219,6 +220,24 @@ internal static class CommonExtensions
                 return Array.Empty<ParameterInfo>();
             }
         }
+    }
+
+#pragma warning disable S1172 // Unused method parameters should be removed
+    private static Type[] ReplaceFakeTypes(this Type[] types, MethodInfo method)
+#pragma warning restore S1172 // Unused method parameters should be removed
+    {
+#if Generator
+        var defaultReplacementType = method.DeclaringType.BaseType;
+        for (var i = 0; i < types.Length; i++)
+        {
+            if (types[i] is SourceGeneration.Utility.FakeType ft)
+            {
+                types[i] = ft.BaseType ?? defaultReplacementType;
+            }
+        }
+
+#endif
+        return types;
     }
 
     internal static ILookup<string, ConfigLookup> GetMethodCalls(
@@ -512,15 +531,33 @@ internal static class CommonExtensions
         return argValue.ConvertTo(method, collectionType, resolutionContext) as ICollection;
     }
 
-    internal static string GetNameWithGenericArguments(this MethodInfo methodInfo)
+    internal static string GetNameWithGenericArguments(this MethodInfo methodInfo, string configKey)
     {
         if (methodInfo.IsGenericMethod)
         {
-            return $"{methodInfo.Name}<{string.Join(", ", methodInfo.GetGenericArguments().Select(x => x.FullName))}>";
+            var typeArgs = methodInfo.GetGenericArguments().Select(x => x.FullName).ToArray();
+#if Generator
+            for (var i = 0; i < typeArgs.Length; i++)
+            {
+                if (typeArgs[i] == "System.Object")
+                {
+                    var idx = configKey.IndexOf("<") + 1;
+                    if (configKey.Contains("@"))
+                    {
+                        idx = configKey.IndexOf("@") + 1;
+                    }
+
+                    var endIdx = configKey.IndexOf(">");
+                    typeArgs[i] = configKey.Substring(idx, endIdx - idx);
+                }
+            }
+
+#endif
+            return $"{methodInfo.Name}<{string.Join(", ", typeArgs)}>";
         }
         else
         {
-            return methodInfo.Name;
+            return methodInfo.Name ?? configKey;
         }
     }
 }

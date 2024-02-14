@@ -5,7 +5,7 @@ namespace TestWebApiGenerator;
 
 internal static partial class ServiceRegistrationExtensions
 {
-    [GenerateConfiguration("Services", ExcludedSections = new[] { "Hsts" }, ImplicitSuffixes = new[] { "Instrumentation", "Exporter" }, ConfigurationPath = nameof(WebApplicationBuilder.Configuration))]
+    [GenerateConfiguration("Services", ExcludedSections = new[] { "Hsts" }, ImplicitSuffixes = new[] { "Instrumentation", "Exporter" }, ConfigurationPath = nameof(WebApplicationBuilder.Configuration), ExpandableSections = new[] { "Extra" })]
     public static partial void AddServicesFromConfiguration(this WebApplicationBuilder builder);
 
     // [GenerateServiceRegistration("Services")]

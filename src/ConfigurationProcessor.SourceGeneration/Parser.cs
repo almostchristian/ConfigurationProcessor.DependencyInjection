@@ -83,6 +83,7 @@ internal class Parser
                     (string configurationSection, string? configurationFile, string? configurationPath) = (string.Empty, null, null);
                     string[] excluded = Array.Empty<string>();
                     string[] suffixes = Array.Empty<string>();
+                    string[] expandedSections = Array.Empty<string>();
                     foreach (AttributeListSyntax mal in method.AttributeLists)
                     {
                         foreach (AttributeSyntax ma in mal.Attributes)
@@ -168,6 +169,10 @@ internal class Parser
                                                     values = (ImmutableArray<TypedConstant>)GetItem(value)!;
                                                     suffixes = values.Select(x => x.Value?.ToString()).Where(x => !string.IsNullOrEmpty(x)).ToArray()!;
                                                     break;
+                                                case "ExpandableSections":
+                                                    values = (ImmutableArray<TypedConstant>)GetItem(value)!;
+                                                    expandedSections = values.Select(x => x.Value?.ToString()).Where(x => !string.IsNullOrEmpty(x)).ToArray()!;
+                                                    break;
                                             }
                                         }
                                     }
@@ -181,7 +186,7 @@ internal class Parser
                             }
 
                             var configFile = configurationFile ?? DefaultConfigurationFile;
-                            IDictionary<string, string?> configurationValues;
+                            IEnumerable<KeyValuePair<string, string?>> configurationValues;
                             var jsonFilePath = context.AdditionalFiles.FirstOrDefault(x => Path.GetFileName(x.Path) == configFile)?.Path;
 
                             if (jsonFilePath == null &&
@@ -200,11 +205,19 @@ internal class Parser
                             {
                                 configurationValues = JsonConfigurationFileParser.Parse(File.OpenRead(jsonFilePath));
 
+                                if (expandedSections.Length > 0)
+                                {
+                                    var candidatePrefixes = expandedSections.Select(x => $"{configurationSection}:{x}").ToImmutableHashSet();
+                                    configurationValues = configurationValues
+                                        .Where(x => candidatePrefixes.Any(y => x.Key.StartsWith(y)))
+                                        .ToList();
+                                }
+
                                 if (excluded.Length > 0)
                                 {
                                     configurationValues = configurationValues
                                         .Where(x => !excluded.Any(z => x.Key.StartsWith(z)))
-                                        .ToDictionary(x => x.Key, x => x.Value);
+                                        .Select(x => new KeyValuePair<string, string?>(x.Key, x.Value));
                                 }
                             }
 
@@ -214,7 +227,7 @@ internal class Parser
                                 methodSignature = "this " + methodSignature;
                             }
 
-                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, methodSignature, method.Modifiers.ToString(), configurationValues, configurationSection);
+                            var lm = new ServiceRegistrationMethod(configurationMethodSymbol.Name, methodSignature, method.Modifiers.ToString(), configurationValues, expandedSections, configurationSection);
                             lm.ImplicitSuffixes = suffixes;
                             static string ToDisplay(IParameterSymbol parameter)
                             {
@@ -312,6 +325,7 @@ internal class Parser
                                 {
                                     foundTarget = notMatchesConfiguration;
                                     lm.TargetField = paramName;
+                                    lm.TargetTypeName = paramSymbol.Type.ToDisplayString();
                                 }
 
                                 if (foundConfiguration && matchesConfiguration)
@@ -363,6 +377,7 @@ internal class Parser
                                         if (!string.IsNullOrEmpty(configurationPath))
                                         {
                                             lm.ConfigurationField = $"{paramName}.{configurationPath}";
+                                            foundConfiguration = true;
                                         }
 
                                         var properties = paramTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToArray();
@@ -380,18 +395,22 @@ internal class Parser
                                             {
                                                 foundTarget = matchesServiceCollection;
                                                 lm.TargetField = $"{paramName}.{property.Name}";
+                                                lm.TargetTypeName = property.Type.ToDisplayString();
                                             }
 
-                                            if (foundConfiguration && matchesConfiguration)
+                                            if (string.IsNullOrEmpty(configurationPath))
                                             {
-                                                keepMethod = false;
-                                                Diag(DiagnosticDescriptors.MultipleConfigurationParameter, paramSymbol.Locations[0]);
-                                                break;
-                                            }
-                                            else if (matchesConfiguration)
-                                            {
-                                                foundConfiguration = matchesConfiguration;
-                                                lm.ConfigurationField = $"{paramName}.{property.Name}";
+                                                if (foundConfiguration && matchesConfiguration)
+                                                {
+                                                    keepMethod = false;
+                                                    Diag(DiagnosticDescriptors.MultipleConfigurationParameter, paramSymbol.Locations[0]);
+                                                    break;
+                                                }
+                                                else if (matchesConfiguration)
+                                                {
+                                                    foundConfiguration = matchesConfiguration;
+                                                    lm.ConfigurationField = $"{paramName}.{property.Name}";
+                                                }
                                             }
                                         }
                                     }
@@ -429,6 +448,7 @@ internal class Parser
                                     else
                                     {
                                         lm.TargetField = serviceCollectionField;
+                                        lm.TargetTypeName = ServiceCollectionTypeName;
                                     }
                                 }
                                 else if (!foundConfiguration)

@@ -2,7 +2,9 @@
 // Copyright (c) almostchristian. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 using ConfigurationProcessor.SourceGeneration;
 using ConfigurationProcessor.SourceGeneration.Parsing;
@@ -42,11 +44,11 @@ public class Generator : ISourceGenerator
         if (registrationClasses.Count > 0)
         {
             var paths = context.Compilation.ExternalReferences.Select(x => x.Display!).ToList();
-            var resolver = new PathAssemblyResolver(paths);
+            var resolver = new ReflectionPathAssemblyResolver(paths);
             var mlc = new MetadataLoadContext(resolver);
             var references = context.Compilation.ExternalReferences.Select(x => mlc.LoadFromAssemblyPath(x.Display!)).ToList();
 
-            string result = Emitter.Emit(registrationClasses, references, context.CancellationToken);
+            string result = Emitter.Emit(context.Compilation.Assembly, registrationClasses, references, resolver, context.CancellationToken);
 
             context.AddSource($"{registrationClasses.First().Name}.g.cs", SourceText.From(result, Encoding.UTF8));
         }

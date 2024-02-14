@@ -9,8 +9,9 @@ namespace ConfigurationProcessor.SourceGeneration.Parsing;
 /// <param name="Arguments"></param>
 /// <param name="Modifiers"></param>
 /// <param name="ConfigurationValues"></param>
+/// <param name="ConfigurationRoots"></param>
 /// <param name="ConfigurationSectionName"></param>
-public sealed record class ServiceRegistrationMethod(string Name, string Arguments, string Modifiers, IEnumerable<KeyValuePair<string, string?>> ConfigurationValues, string ConfigurationSectionName)
+public sealed record class ServiceRegistrationMethod(string Name, string Arguments, string Modifiers, IEnumerable<KeyValuePair<string, string?>> ConfigurationValues, string[] ConfigurationRoots, string ConfigurationSectionName)
 {
     /// <summary>
     /// The unique method name.
@@ -21,6 +22,11 @@ public sealed record class ServiceRegistrationMethod(string Name, string Argumen
     /// The target field expression.
     /// </summary>
     public string? TargetField { get; set; }
+
+    /// <summary>
+    /// The target type name.
+    /// </summary>
+    public string? TargetTypeName { get; set; }
 
     /// <summary>
     /// The configuration field expression.

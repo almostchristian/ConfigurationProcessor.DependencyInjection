@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using ConfigurationProcessor.SourceGeneration.Parsing;
 using ConfigurationProcessor.SourceGeneration.Utility;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor.SourceGeneration;
@@ -18,13 +19,15 @@ public static class Emitter
     /// <summary>
     /// Generates code from service class registrations.
     /// </summary>
+    /// <param name="currentAssembly"></param>
     /// <param name="generateConfigurationClasses"></param>
     /// <param name="references"></param>
+    /// <param name="assemblyResolver"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
+    public static string Emit(IAssemblySymbol currentAssembly, IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, ReflectionPathAssemblyResolver assemblyResolver, CancellationToken cancellationToken)
     {
-        var emitContext = new EmitContext(generateConfigurationClasses.First().Namespace, references);
+        var emitContext = new EmitContext(currentAssembly, generateConfigurationClasses.First().Namespace, references, assemblyResolver);
 
         foreach (var configClass in generateConfigurationClasses)
         {
@@ -61,7 +64,28 @@ public static class Emitter
                     """);
 
                 emitContext.IncreaseIndent();
-                BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configSectionVariableName);
+
+                if (configMethod.ConfigurationRoots.Length > 0)
+                {
+                    foreach (var configRoot in configMethod.ConfigurationRoots)
+                    {
+                        var prefix = $"{sectionName}:{configRoot}:";
+                        var configValues = configMethod.ConfigurationValues
+                            .Where(x => x.Key.StartsWith(prefix))
+                            .ToList();
+                        var configRootSectionName = $"config{configRoot.Replace(':', '_')}";
+                        emitContext.Write($$"""
+
+                            var {{configRootSectionName}} = {{configSectionVariableName}}.GetSection("{{configRoot}}");
+                            """);
+                        BuildMethods(emitContext, configValues, $"{sectionName}:{configRoot}", configMethod.TargetField!, configMethod.TargetTypeName!, configRootSectionName);
+                    }
+                }
+                else
+                {
+                    BuildMethods(emitContext, configMethod.ConfigurationValues, sectionName, configMethod.TargetField!, configMethod.TargetTypeName!, configSectionVariableName);
+                }
+
                 emitContext.DecreaseIndent();
                 emitContext.Write("}");
             }
@@ -77,7 +101,7 @@ public static class Emitter
         return emitContext.ToString();
     }
 
-    private static void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string configSectionVariableName)
+    private static void BuildMethods(EmitContext emitContext, IEnumerable<KeyValuePair<string, string?>> configurationValues, string sectionName, string targetExpression, string targetTypeName, string configSectionVariableName)
     {
         var configBuilder = new ConfigurationBuilder();
         configBuilder.AddInMemoryCollection(configurationValues);
@@ -91,7 +115,7 @@ public static class Emitter
             directive,
             sectionName,
             configSectionVariableName,
-            Parser.ServiceCollectionTypeName,
+            targetTypeName,
             serviceCollectionParameterName);
     }
 }
