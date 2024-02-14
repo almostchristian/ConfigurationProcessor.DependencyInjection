@@ -28,7 +28,27 @@ internal static class CoreCompatExtensions
         };
 
     internal static object Get(this IConfiguration configuration, Type type)
-        => throw new NotImplementedException();
+    {
+        if (configuration is IConfigurationSection sec)
+        {
+            if (type.FullName == typeof(string).FullName)
+            {
+                return sec.Value!;
+            }
+            else if (type.FullName == typeof(int).FullName)
+            {
+                return int.Parse(sec.Value);
+            }
+            else
+            {
+                return Convert.ChangeType(sec.Value, type);
+            }
+        }
+        else
+        {
+            throw new NotImplementedException();
+        }
+    }
 
     internal static Delegate GenerateLambda(
        this ResolutionContext resolutionContext,

@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using ConfigurationProcessor.SourceGeneration.Parsing;
 using ConfigurationProcessor.SourceGeneration.Utility;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor.SourceGeneration;
@@ -18,13 +19,15 @@ public static class Emitter
     /// <summary>
     /// Generates code from service class registrations.
     /// </summary>
+    /// <param name="currentAssembly"></param>
     /// <param name="generateConfigurationClasses"></param>
     /// <param name="references"></param>
+    /// <param name="assemblyResolver"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static string Emit(IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, CancellationToken cancellationToken)
+    public static string Emit(IAssemblySymbol currentAssembly, IReadOnlyList<ServiceRegistrationClass> generateConfigurationClasses, List<Assembly> references, ReflectionPathAssemblyResolver assemblyResolver, CancellationToken cancellationToken)
     {
-        var emitContext = new EmitContext(generateConfigurationClasses.First().Namespace, references);
+        var emitContext = new EmitContext(currentAssembly, generateConfigurationClasses.First().Namespace, references, assemblyResolver);
 
         foreach (var configClass in generateConfigurationClasses)
         {

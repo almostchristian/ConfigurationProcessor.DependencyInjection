@@ -57,12 +57,20 @@ namespace ConfigurationProcessor.Core.Implementation
          {
             var elementType = toType.GetElementType();
             var configurationElements = section.GetChildren().ToArray();
+#if Generator
+            var result = new object();
+#else
             var result = Array.CreateInstance(elementType!, configurationElements.Length);
+#endif
             for (int i = 0; i < configurationElements.Length; ++i)
             {
                var argumentValue = configurationElements[i].GetArgumentValue(resolutionContext);
                var value = argumentValue.ConvertTo(configurationMethod, elementType!, resolutionContext);
+#if Generator
+               System.Diagnostics.Debug.WriteLine(value);
+#else
                result.SetValue(value, i);
+#endif
             }
 
             return result;

@@ -123,7 +123,7 @@ internal static class Helpers
         IConfiguration rootConfiguration,
         Dictionary<string, IConfigurationSection> paramArgs)
     {
-        var methodName = chosenMethod.GetNameWithGenericArguments() ?? configKey;
+        var methodName = chosenMethod.GetNameWithGenericArguments(configKey);
         emitContext.AddNamespace(chosenMethod.DeclaringType.Namespace);
 
         // we check if this is an extension method and get the non extension parameter type
@@ -201,7 +201,7 @@ internal static class Helpers
             $@"
 if ({configSectionVariableName}.GetValue<bool>(""{key}""))
 {{
-   {targetVariableName}.{foundMethod?.GetNameWithGenericArguments() ?? key}();
+   {targetVariableName}.{foundMethod?.GetNameWithGenericArguments(key)}();
 }}");
     }
 
@@ -395,14 +395,23 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                         $@"{targetVariableName}.{propertyInfo.Name} = new {propertyInfo.PropertyType.GetCSharpFullName()}();");
                 }
 
-                foreach (var param in paramArgs)
+                var isPropCollection = paramArgs.Keys.IsArray();
+
+                if (isPropCollection)
                 {
-                    if (propertyInfo.PropertyType.GetProperty(param.Key) is PropertyInfo subProperty)
+                    emitContext.Write(
+                        $@"{targetVariableName}.{propertyInfo.Name} = {configSectionVariableName}.GetValue<{propertyInfo.PropertyType.GetCSharpFullName()}>(""{methodName}"");");
+                }
+                else
+                {
+                    foreach (var param in paramArgs)
                     {
-                        var value = param.Value.ConfigSection.GetSection(param.Key).Value;
-                        if (subProperty.PropertyType == typeof(Type))
+                        if (propertyInfo.PropertyType.GetProperty(param.Key) is PropertyInfo subProperty)
                         {
-                            emitContext.Write($$"""
+                            var value = param.Value.ConfigSection.GetSection(param.Key).Value;
+                            if (subProperty.PropertyType == typeof(Type))
+                            {
+                                emitContext.Write($$"""
                                 if ({{configSectionVariableName}}.GetValue<string>("{{param.Value.ConfigSection.Key}}:{{param.Key}}") == "{{value}}")
                                 {
                                    {{targetVariableName}}.{{propertyInfo.Name}}.{{subProperty.Name}} = typeof({{value}});
@@ -413,37 +422,38 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                                 }
 
                                 """);
-                        }
-                        else if (StringArgumentValue.TryParseStaticMemberAccessor(value!, out var accessorTypeName, out var memberName))
-                        {
-                            emitContext.Write($$"""
+                            }
+                            else if (StringArgumentValue.TryParseStaticMemberAccessor(value!, out var accessorTypeName, out var memberName))
+                            {
+                                emitContext.Write($$"""
                                 if ({{configSectionVariableName}}.GetValue<string>("{{param.Value.ConfigSection.Key}}:{{param.Key}}") == "{{value}}")
                                 {
                                    {{targetVariableName}}.{{propertyInfo.Name}}.{{subProperty.Name}} = {{accessorTypeName}}.{{memberName}};
                                 }
 
                                 """);
+                            }
+                            else
+                            {
+                                emitContext.Write(
+                                    $@"{targetVariableName}.{propertyInfo.Name}.{subProperty.Name} = {configSectionVariableName}.GetValue<{subProperty.PropertyType.GetCSharpFullName()}>(""{param.Value.ConfigSection.Key}:{param.Key}"");");
+                            }
+                        }
+                        else if (
+                            (propertyInfo.PropertyType.GetMethods().SingleOrDefault(x => x.Name == param.Key) ??
+                            propertyInfo.PropertyType.GetInterfaces().SelectMany(x => x.GetMethods()).FirstOrDefault(x => x.Name == param.Key)) != null)
+                        {
+                            emitContext.Write(
+                                $@"if ({configSectionVariableName}.GetValue<bool>(""{param.Value.ConfigSection.Key}:{param.Key}""))
+{{
+   {targetVariableName}.{propertyInfo.Name}.{param.Key}();
+}}");
                         }
                         else
                         {
                             emitContext.Write(
-                                $@"{targetVariableName}.{propertyInfo.Name}.{subProperty.Name} = {configSectionVariableName}.GetValue<{subProperty.PropertyType.GetCSharpFullName()}>(""{param.Value.ConfigSection.Key}:{param.Key}"");");
+                                $@"// unsupported property/method {param.Key}");
                         }
-                    }
-                    else if (
-                        (propertyInfo.PropertyType.GetMethods().SingleOrDefault(x => x.Name == param.Key) ??
-                        propertyInfo.PropertyType.GetInterfaces().SelectMany(x => x.GetMethods()).FirstOrDefault(x => x.Name == param.Key)) != null)
-                    {
-                        emitContext.Write(
-                            $@"if ({configSectionVariableName}.GetValue<bool>(""{param.Value.ConfigSection.Key}:{param.Key}""))
-{{
-   {targetVariableName}.{propertyInfo.Name}.{param.Key}();
-}}");
-                    }
-                    else
-                    {
-                        emitContext.Write(
-                            $@"// unsupported property/method {param.Key}");
                     }
                 }
             }
@@ -461,13 +471,13 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
                 configSection.Key,
                 targetVariableName,
                 configSection,
-                $"section{configurationMethod!.GetDisplayName(methodName)}",
+                $"section{configurationMethod!.GetDisplayName(methodName, configSection.Key)}",
                 rootConfiguration,
                 paramArgs.ToDictionary(x => x.Key, x => x.Value.ConfigSection));
         }
         else
         {
-            emitContext.EmitSimpleBoolean(new List<MethodInfo> { configurationMethod! }, configSectionVariableName, methodName, targetVariableName);
+            emitContext.EmitSimpleBoolean(new List<MethodInfo> { configurationMethod! }, configSectionVariableName, configSection.Key, targetVariableName);
         }
     }
 
@@ -483,11 +493,25 @@ if ({configSectionVariableName}.GetValue<bool>(""{key}""))
         }
     }
 
-    public static string GetDisplayName(this MethodInfo method, string methodName)
+    public static string GetDisplayName(this MethodInfo method, string methodName, string configKey)
     {
         if (method.IsGenericMethod)
         {
-            return $"{methodName}__{string.Join("_", method.GetGenericArguments().Select(x => x.Name))}";
+            var typeArgs = method.GetGenericArguments().Select(x => x.Name).ToArray();
+            if (configKey.Contains("@"))
+            {
+                for (var i = 0; i < typeArgs.Length; i++)
+                {
+                    if (typeArgs[i] == "Object")
+                    {
+                        var idx = configKey.IndexOf("@") + 1;
+                        var endIdx = configKey.IndexOf(">");
+                        typeArgs[i] = configKey.Substring(idx, endIdx - idx);
+                    }
+                }
+            }
+
+            return $"{methodName}__{string.Join("_", typeArgs)}";
         }
         else
         {

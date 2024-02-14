@@ -1,5 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 using ConfigurationProcessor.SourceGeneration.Utility;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
 namespace ConfigurationProcessor.Core.Implementation;
@@ -21,10 +23,11 @@ internal record class ResolutionContext(EmitContext EmitContext, IConfiguration 
             var newTypeName = typeName.Substring(1).ToString();
             return (method, argIndex) =>
             {
+                Type result;
                 if (newTypeName.IndexOf('@') >= 0)
                 {
                     var split = newTypeName.Split('@');
-                    return EmitContext.CreateType(split[0], CreateTypeResolver(split[1], rootConfiguration, ambientConfiguration)(method, argIndex));
+                    result = EmitContext.CreateType(split[0], CreateTypeResolver(split[1], rootConfiguration, ambientConfiguration)(method, argIndex));
                 }
                 else
                 {
@@ -33,8 +36,10 @@ internal record class ResolutionContext(EmitContext EmitContext, IConfiguration 
                         throw new InvalidOperationException("Method cannot be null");
                     }
 
-                    return EmitContext.CreateType(newTypeName);
+                    result = EmitContext.CreateType(newTypeName);
                 }
+
+                return result;
             };
         }
         else
@@ -62,6 +67,10 @@ internal record class ResolutionContext(EmitContext EmitContext, IConfiguration 
         if (EmitContext.TypeMap.TryGetValue(typeName, out var values))
         {
             return values.Single();
+        }
+        else if (EmitContext.CurrentAssembly.GetTypeByMetadataName(typeName) is INamedTypeSymbol typeSymbol)
+        {
+            return new FakeType(typeSymbol.Name, typeSymbol.ContainingNamespace.Name, null);
         }
         else
         {

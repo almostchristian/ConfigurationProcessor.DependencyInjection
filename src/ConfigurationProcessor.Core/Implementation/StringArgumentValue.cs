@@ -70,7 +70,11 @@ namespace ConfigurationProcessor.Core.Implementation
 
          if (toTypeInfo.IsEnum)
          {
-            return Enum.Parse(toType, argumentValue, true);
+#if Generator
+             return true;
+#else
+             return Enum.Parse(toType, argumentValue, true);
+#endif
          }
 
          var convertor = ExtendedTypeConversions
